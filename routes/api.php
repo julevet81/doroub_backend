@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\Auth\{
     PasswordController,
     EmailVerificationController
 };
+use App\Http\Controllers\Api\PermissionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -59,50 +60,68 @@ Route::get('/verify-email/{id}/{hash}', [EmailVerificationController::class, 've
 // Auth (Breeze / Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
 
-    Route::apiResource('projects', ProjectController::class);
+    ############################## المشاريع ##############################
+    Route::get('projects', [ProjectController::class, 'index']);
+    Route::post('projects', [ProjectController::class, 'store']);
+    Route::get('projects/{project}', [ProjectController::class, 'show']);
+    Route::put('projects/{project}', [ProjectController::class, 'update']);
+    Route::delete('projects/{project}', [ProjectController::class, 'destroy']);
 
+    ############################## المتطوعين ##############################
     Route::apiResource('volunteers', VolunteerController::class);
     Route::get('volunteers/statistics', [VolunteerController::class, 'statistics']);
 
+    ############################## انواع المساعدات ##############################
     Route::apiResource('assistance-categories', AssistanceCategoryController::class);
 
+    ############################## اعيان المساعدات ##############################
     Route::apiResource('assistance-items', AssistanceItemController::class);
 
+    ############################## المتبرعين ##############################
     Route::get('donors-assistance-categories', [DonorController::class, 'categories']);
     Route::apiResource('donors', DonorController::class);
 
+    ############################## مساعدات المشاريع ##############################
     Route::apiResource('project-assistances', ProjectAssistanceController::class);
 
+    ############################## المخزون ##############################
     Route::apiResource('inventory-transactions', InventoryTransactionController::class);
     Route::apiResource('inventory-out', InventoryOutController::class);
 
+    ############################## فئات المستفيدين ##############################
     Route::apiResource('beneficiary-categories', BeneficiaryCategoryController::class);
 
+    ##############################  المستفيدين ##############################
     Route::get('beneficiaries/{district}/municipalities', [BeneficiaryController::class, 'getMunicipalities']);
     Route::get('beneficiaries/statistics', [BeneficiaryController::class, 'statistics']);
-
-    Route::apiResource('beneficiaries', BeneficiaryController::class);
     Route::get('beneficiaries/statistics', [BeneficiaryController::class, 'statistics']);
     Route::get('municipalities/by-district/{district}', [BeneficiaryController::class, 'getMunicipalities']);
+    Route::apiResource('beneficiaries', BeneficiaryController::class);
 
+    ############################## الاطفال ##############################
     Route::apiResource('children', ChildController::class);
 
+    ############################## المالية ##############################
     Route::get('financial-transactions/statistics', [FinancialTransactionController::class, 'statistics']);
     Route::apiResource('financial-transactions', FinancialTransactionController::class);
 
-
+    ############################## النفقات ##############################
     Route::apiResource('expenses', ExpenseController::class);
 
+    ############################## الاستفادات ##############################
     Route::apiResource('benefices', BeneficeController::class);
 
+    ############################## حركات المساعدات من المخزن ##############################
     Route::apiResource('transaction-items', TransactionItemController::class);
 
+    ############################## معلومات الزوج/الزوجة ##############################
     Route::apiResource('partner-infos', PartnerInfoController::class);
 
+    ############################## الطلبات ##############################
     Route::apiResource('demonds', DemondController::class);
     Route::apiResource('demonded-items', DemondedItemController::class);
 
-    // Devices
+    ############################## الاجهزة ##############################
     Route::get('devices/loaned', [DeviceController::class, 'loaned']);
     Route::get('devices/returned', [DeviceController::class, 'returned']);
     Route::get('devices/destructed', [DeviceController::class, 'destructed']);
@@ -110,13 +129,25 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('devices', DeviceController::class);
 
+    ############################## التسجيلات ##############################
     Route::apiResource('registrations', RegistrationController::class);
 
+    ############################## البلديات ##############################
     Route::apiResource('municipalities', MunicipalityController::class);
+
+    ############################## الدوائر ##############################
     Route::apiResource('districts', DistrictController::class);
 
+    ############################## المستخدمين ##############################
     Route::apiResource('users', UserController::class);
+
+    ############################## الادوار ##############################
     Route::apiResource('roles', RoleController::class);
 
+    ############################## الصلاحيات #############################
+    Route::get('/permissions', [PermissionController::class, 'index']);
+    Route::post('/permissions', [PermissionController::class, 'store']);
+
+    ############################## الاعارات ##############################
     Route::apiResource('loans', LoanController::class);
 });

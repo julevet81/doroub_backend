@@ -31,7 +31,6 @@ class RoleController extends Controller
         ];
 
         return response()->json([
-            'message' => 'تم جلب بيانات الدور بنجاح',
             'data' => $roleData
         ], 200);
     }

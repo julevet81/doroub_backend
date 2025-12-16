@@ -21,7 +21,7 @@ class Project extends Model
         'description',
     ];
 
-    public function assistances()
+    public function items()
     {
         return $this->belongsToMany(AssistanceItem::class, 'project_assistances')
             ->withPivot('quantity')
@@ -33,15 +33,6 @@ class Project extends Model
         return $this->belongsToMany(Volunteer::class, 'project_volunteers')
             ->withPivot('position')
             ->withTimestamps();
-    }
-    public function projectAssistances()
-    {
-        return $this->hasMany(ProjectAssistance::class);
-    }
-
-    public function projectVolunteers()
-    {
-        return $this->hasMany(ProjectVolunteer::class);
     }
 
     public function transaction()

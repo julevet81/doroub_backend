@@ -32,7 +32,7 @@ class ProjectController extends Controller
             'type' => 'required|string',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'amount' => 'nullable|numeric',
+            'budget' => 'nullable|numeric',
             'status' => 'required|string',
             'notes' => 'nullable|string',
 
@@ -52,13 +52,13 @@ class ProjectController extends Controller
                 'type' => $validated['type'],
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'] ?? null,
-                'amount' => $validated['amount'] ?? null,
+                'budget' => $validated['budget'] ?? null,
                 'status' => $validated['status'],
                 'notes' => $validated['notes'] ?? null,
             ]);
 
             foreach ($validated['items'] as $item) {
-                $project->assistances()->attach($item['item_id'], [
+                $project->items()->attach($item['item_id'], [
                     'quantity' => $item['quantity']
                 ]);
 
@@ -79,7 +79,7 @@ class ProjectController extends Controller
 
         return response()->json([
             'message' => 'تم إنشاء المشروع بنجاح',
-            'data' => $project->load(['assistances', 'volunteers'])
+            'data' => $project->load(['items', 'volunteers'])
         ], 201);
     }
 
@@ -89,7 +89,7 @@ class ProjectController extends Controller
     public function show(Project $project)
     {
         return response()->json([
-            'data' => $project->load(['assistances', 'volunteers'])
+            'data' => $project->load(['items', 'volunteers'])
         ], 200);
     }
 
@@ -119,7 +119,7 @@ class ProjectController extends Controller
         DB::transaction(function () use ($validated, $project) {
 
             // إعادة الكمية القديمة للمخزون
-            foreach ($project->assistances as $old) {
+            foreach ($project->items as $old) {
                 AssistanceItem::where('id', $old->id)
                     ->increment('quantity_in_stock', $old->pivot->quantity);
             }
@@ -134,11 +134,11 @@ class ProjectController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            $project->assistances()->detach();
+            $project->items()->detach();
             $project->volunteers()->detach();
 
             foreach ($validated['items'] as $item) {
-                $project->assistances()->attach($item['item_id'], [
+                $project->items()->attach($item['item_id'], [
                     'quantity' => $item['quantity']
                 ]);
 
@@ -157,7 +157,7 @@ class ProjectController extends Controller
 
         return response()->json([
             'message' => 'تم تحديث المشروع بنجاح',
-            'data' => $project->load(['assistances', 'volunteers'])
+            'data' => $project->load(['items', 'volunteers'])
         ], 200);
     }
 
