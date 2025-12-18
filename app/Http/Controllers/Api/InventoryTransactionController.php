@@ -11,17 +11,42 @@ use Illuminate\Support\Facades\DB;
 
 class InventoryTransactionController extends Controller
 {
-    
+
     public function index()
     {
+        // جميع عمليات الإدخال
         $transactions = InventoryTransaction::where('transaction_type', 'in')
-            ->with(['donor', 'orientation', 'assistanceItems.assistanceItem'])
+            ->with(['donor', 'assistanceItems', 'project'])
             ->get();
 
+        // الإحصاءات
+        $stats = [
+            // عدد المتبرعين (بدون تكرار)
+            'donors_count' => InventoryTransaction::where('transaction_type', 'in')
+                ->whereNotNull('donor_id')
+                ->distinct('donor_id')
+                ->count('donor_id'),
+
+            // عدد كل التحويلات من الخزينة (in)
+            'total_in_transactions' => InventoryTransaction::where('transaction_type', 'in')->count(),
+
+            // عدد التحويلات الموجهة إلى المخزون
+            'to_inventory_count' => InventoryTransaction::where('transaction_type', 'in')
+                ->where('orientation', 'inventory')
+                ->count(),
+
+            // عدد التحويلات الموجهة إلى المشاريع
+            'to_projects_count' => InventoryTransaction::where('transaction_type', 'in')
+                ->where('orientation', 'project')
+                ->count(),
+        ];
+
         return response()->json([
-            'data' => $transactions
+            'data' => $transactions,
+            'statistics' => $stats
         ], 200);
     }
+
 
     public function store(Request $request)
     {
@@ -33,7 +58,7 @@ class InventoryTransactionController extends Controller
 
             'assistanceItems' => 'required|array|min:1',
             'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
-            'assistanceItems.*.quantity' => 'required|integer|min:1',
+            'assistanceItems.*.quantity' => 'required|numeric|min:1',
         ]);
 
         $transaction = DB::transaction(function () use ($validated) {
@@ -63,7 +88,22 @@ class InventoryTransactionController extends Controller
 
         return response()->json([
             'message' => 'تم تسجيل عملية الإدخال بنجاح',
-            'data' => $transaction->load('assistanceItems.assistanceItem')
+            'data' => [
+                'id' => $transaction->id,
+                'transaction_type' => $transaction->transaction_type,
+                'donor_id' => $transaction->donor_id,
+                'transaction_date' => $transaction->transaction_date,
+                'orientation' => $transaction->orientation,
+                'notes' => $transaction->notes,
+                'assistanceItems' => $transaction->assistanceItems->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'category' => $item->assistanceCategory?->name,
+                        'quantity' => $item->pivot->quantity,
+                    ];
+                }),
+            ],
         ], 201);
     }
 
@@ -72,8 +112,7 @@ class InventoryTransactionController extends Controller
         return response()->json([
             'data' => $inventoryTransaction->load([
                 'donor',
-                'orientation',
-                'assistanceItems.assistanceItem'
+                'assistanceItems'
             ])
         ], 200);
     }
@@ -82,7 +121,7 @@ class InventoryTransactionController extends Controller
     {
         $validated = $request->validate([
             'donor_id' => 'nullable|exists:donors,id',
-            'transaction_date' => 'required|date',
+            'transaction_date' => 'sometimes|date',
             'orientation' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
@@ -99,12 +138,12 @@ class InventoryTransactionController extends Controller
     {
         DB::transaction(function () use ($inventoryTransaction) {
 
-            foreach ($inventoryTransaction->items as $item) {
+            foreach ($inventoryTransaction->assistanceItems as $item) {
                 AssistanceItem::where('id', $item->assistance_item_id)
-                    ->decrement('quantity_in_stock', $item->quantity);
+                    ->decrement('quantity_in_stock', $item->pivot->quantity);
             }
 
-            $inventoryTransaction->items()->delete();
+            $inventoryTransaction->assistanceItems()->delete();
             $inventoryTransaction->delete();
         });
 

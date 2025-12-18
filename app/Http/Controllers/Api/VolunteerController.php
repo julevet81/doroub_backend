@@ -8,9 +8,11 @@ use Illuminate\Http\Request;
 
 class VolunteerController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // public function __construct()
+    // {
+    //     $this->middleware('permission:اجصائيات المتطوعين')->only('statistics');
+    //     $this->middleware('permission:عرض المتطوعين')->only('index');
+    // }
     public function index()
     {
         return response()->json([

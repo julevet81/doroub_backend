@@ -10,12 +10,9 @@ use Illuminate\Support\Facades\DB;
 
 class ProjectController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $projects = Project::with(['assistances', 'volunteers'])->get();
+        $projects = Project::with(['items', 'volunteers'])->get();
 
         return response()->json([
             'data' => $projects
@@ -27,6 +24,7 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string',
@@ -37,7 +35,7 @@ class ProjectController extends Controller
             'notes' => 'nullable|string',
 
             'items' => 'required|array',
-            'items.*.item_id' => 'required|exists:assistance_items,id',
+            'items.*.id' => 'required|exists:assistance_items,id',
             'items.*.quantity' => 'required|integer|min:1',
 
             'volunteers' => 'nullable|array',
@@ -58,11 +56,11 @@ class ProjectController extends Controller
             ]);
 
             foreach ($validated['items'] as $item) {
-                $project->items()->attach($item['item_id'], [
+                $project->items()->attach($item['id'], [
                     'quantity' => $item['quantity']
                 ]);
 
-                AssistanceItem::where('id', $item['item_id'])
+                AssistanceItem::where('id', $item['id'])
                     ->decrement('quantity_in_stock', $item['quantity']);
             }
 
@@ -108,7 +106,7 @@ class ProjectController extends Controller
             'notes' => 'nullable|string',
 
             'items' => 'required|array',
-            'items.*.item_id' => 'required|exists:assistance_items,id',
+            'items.*.id' => 'required|exists:assistance_items,id',
             'items.*.quantity' => 'required|integer|min:1',
 
             'volunteers' => 'nullable|array',
@@ -138,11 +136,11 @@ class ProjectController extends Controller
             $project->volunteers()->detach();
 
             foreach ($validated['items'] as $item) {
-                $project->items()->attach($item['item_id'], [
+                $project->items()->attach($item['id'], [
                     'quantity' => $item['quantity']
                 ]);
 
-                AssistanceItem::where('id', $item['item_id'])
+                AssistanceItem::where('id', $item['id'])
                     ->decrement('quantity_in_stock', $item['quantity']);
             }
 

@@ -25,7 +25,7 @@ class InventoryTransaction extends Model
 
     public function assistanceItems()
     {
-        return $this->hasMany(AssistanceItem::class, 'inventory_transaction_items')
+        return $this->belongsToMany(AssistanceItem::class, 'transaction_items')
                     ->withPivot('quantity')
                     ->withTimestamps();
     }

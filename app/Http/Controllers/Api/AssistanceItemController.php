@@ -56,8 +56,8 @@ class AssistanceItemController extends Controller
     public function update(Request $request, AssistanceItem $assistanceItem)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'quantity_in_stock' => 'required|integer|min:0',
+            'name' => 'sometimes|string|max:255',
+            'quantity_in_stock' => 'sometimes|integer|min:0',
         ]);
 
         $assistanceItem->update($validated);

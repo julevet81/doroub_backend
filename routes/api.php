@@ -68,13 +68,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('projects/{project}', [ProjectController::class, 'destroy']);
 
     ############################## المتطوعين ##############################
-    Route::apiResource('volunteers', VolunteerController::class);
     Route::get('volunteers/statistics', [VolunteerController::class, 'statistics']);
+    Route::apiResource('volunteers', VolunteerController::class)->middleware('permission:عرض المتطوعين');
+    
 
     ############################## انواع المساعدات ##############################
     Route::apiResource('assistance-categories', AssistanceCategoryController::class);
 
-    ############################## اعيان المساعدات ##############################
+    ############################## عناصر المساعدات ##############################
     Route::apiResource('assistance-items', AssistanceItemController::class);
 
     ############################## المتبرعين ##############################
