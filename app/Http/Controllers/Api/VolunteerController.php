@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Volunteer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class VolunteerController extends Controller
 {
@@ -106,15 +108,51 @@ class VolunteerController extends Controller
         ], 200);
     }
 
-    /**
-     * Statistics (API)
-     */
     public function statistics()
     {
+        $now = Carbon::now();
+
         return response()->json([
-            'total' => Volunteer::count(),
-            'male' => Volunteer::where('gender', 'male')->count(),
-            'female' => Volunteer::where('gender', 'female')->count(),
+
+            // 1️⃣ جميع المتطوعين
+            'total_volunteers' => Volunteer::count(),
+
+            // 2️⃣ المتطوعين المسجلين هذا الشهر (عدد)
+            'registered_this_month' => Volunteer::whereYear('created_at', $now->year)
+                ->whereMonth('created_at', $now->month)
+                ->count(),
+
+            // 3️⃣ المتطوعين النشطين
+            'active_volunteers' => Volunteer::where('is_active', true)->count(),
+
+            // 4️⃣ المتطوعين المسجلين خلال آخر 6 شهور
+            'registered_last_6_months' => Volunteer::where('created_at', '>=', $now->subMonths(6))
+                ->count(),
+
+            // 5️⃣ المتطوعين حسب الجنس
+            'volunteers_by_gender' => Volunteer::select('gender', DB::raw('count(*) as total'))
+                ->groupBy('gender')
+                ->get(),
+
+            // 6️⃣ المتطوعين حسب العمر
+            'volunteers_by_age' => [
+                'under_18' => Volunteer::whereDate('date_of_birth', '>', $now->subYears(18))->count(),
+                '18_25' => Volunteer::whereBetween('date_of_birth', [
+                    $now->subYears(25),
+                    $now->subYears(18)
+                ])->count(),
+                '26_40' => Volunteer::whereBetween('date_of_birth', [
+                    $now->subYears(40),
+                    $now->subYears(26)
+                ])->count(),
+                'above_40' => Volunteer::whereDate('date_of_birth', '<', $now->subYears(40))->count(),
+            ],
+
+            // 7️⃣ المتطوعين حسب القسم
+            'volunteers_by_section' => Volunteer::select('section', DB::raw('count(*) as total'))
+                ->groupBy('section')
+                ->get(),
+
         ], 200);
     }
 }

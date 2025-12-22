@@ -11,32 +11,40 @@ use Illuminate\Support\Facades\DB;
 
 class InventoryOutController extends Controller
 {
-    /**
-     * Display a listing of OUT transactions.
-     */
     public function index()
     {
-        $transactions = InventoryTransaction::where('transaction_type', 'out')
-            ->with(['orientation', 'assistanceItems.assistanceItem'])
+        $transactions = InventoryTransaction::query()
+            ->where('transaction_type', 'out')
+            ->select('id', 'orientation', 'transaction_date')
+            ->orderByDesc('transaction_date')
             ->get();
 
+        $stats = [
+            'to_projects' => InventoryTransaction::where('transaction_type', 'out')
+                ->whereNotNull('project_id')
+                ->count(),
+
+            'to_beneficiaries' => InventoryTransaction::where('transaction_type', 'out')
+                ->whereNotNull('beneficiary_id')
+                ->count(),
+        ];
+
         return response()->json([
-            'data' => $transactions
+            'data' => $transactions,
+            'statistics' => $stats
         ], 200);
     }
 
-    /**
-     * Store a newly created OUT transaction.
-     */
+
     public function store(Request $request)
     {
         $validated = $request->validate([
             'transaction_date' => 'required|date',
-            'orientation' => 'nullable|string',
+            'orientation' => 'required|in:project,beneficiary,other',
             'notes' => 'nullable|string',
 
-            'project_id' => 'nullable|exists:projects,id',
-            'beneficiary_id' => 'nullable|exists:beneficiaries,id',
+            'project_id' => 'required_if:orientation,project|nullable|exists:projects,id',
+            'beneficiary_id' => 'required_if:orientation,beneficiary|nullable|exists:beneficiaries,id',
 
             'assistanceItems' => 'required|array|min:1',
             'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
@@ -48,28 +56,25 @@ class InventoryOutController extends Controller
             $transaction = InventoryTransaction::create([
                 'transaction_type' => 'out',
                 'transaction_date' => $validated['transaction_date'],
-                'orientation' => $validated['orientation'] ?? null,
+                'orientation' => $validated['orientation'],
                 'notes' => $validated['notes'] ?? null,
                 'project_id' => $validated['project_id'] ?? null,
                 'beneficiary_id' => $validated['beneficiary_id'] ?? null,
             ]);
 
-            foreach ($validated['items'] as $row) {
+            foreach ($validated['assistanceItems'] as $row) {
 
-                $item = AssistanceItem::findOrFail($row['assistance_item_id']);
+                $item = AssistanceItem::lockForUpdate()->findOrFail($row['assistance_item_id']);
 
-                // حماية من نفاد المخزون
                 if ($item->quantity_in_stock < $row['quantity']) {
                     throw new \Exception("الكمية غير كافية للصنف: {$item->name}");
                 }
 
-                TransactionItem::create([
-                    'inventory_transaction_id' => $transaction->id,
-                    'assistance_item_id' => $row['assistance_item_id'],
-                    'quantity' => $row['quantity'],
-                ]);
+                $transaction->assistanceItems()->attach(
+                    $item->id,
+                    ['quantity' => $row['quantity']]
+                );
 
-                // إنقاص المخزون
                 $item->decrement('quantity_in_stock', $row['quantity']);
             }
 
@@ -78,16 +83,13 @@ class InventoryOutController extends Controller
 
         return response()->json([
             'message' => 'تم تسجيل عملية الإخراج بنجاح',
-            'data' => $transaction->load('assistanceItems.assistanceItem')
+            'data' => $transaction->load('assistanceItems:id,name')
         ], 201);
     }
 
-    /**
-     * Display the specified OUT transaction.
-     */
     public function show(InventoryTransaction $inventoryTransaction)
     {
-        if ($inventoryTransaction->transaction_type !== 'out') {
+        if ($inventoryTransaction->transaction_type != "out") {
             return response()->json([
                 'message' => 'هذه العملية ليست إخراج مخزون'
             ], 400);
@@ -95,16 +97,77 @@ class InventoryOutController extends Controller
 
         return response()->json([
             'data' => $inventoryTransaction->load([
-                'assistanceItems.assistance_item',
-                'project',
-                'beneficiary'
+                'project:id,name',
+                'beneficiary:id,name',
+                'assistanceItems:id,name'
             ])
         ], 200);
     }
 
-    /**
-     * Remove the specified OUT transaction.
-     */
+    public function update(Request $request, InventoryTransaction $inventoryTransaction)
+    {
+        abort_if($inventoryTransaction->transaction_type !== 'out', 404);
+
+        $validated = $request->validate([
+            'transaction_date' => 'required|date',
+            'orientation' => 'required|in:project,beneficiary,other',
+            'notes' => 'nullable|string',
+
+            'assistanceItems' => 'required|array|min:1',
+            'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
+            'assistanceItems.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        $transaction = DB::transaction(function () use ($validated, $inventoryTransaction) {
+
+            /** 1️⃣ إعادة الكميات القديمة للمخزون */
+            foreach ($inventoryTransaction->assistanceItems as $oldItem) {
+                $oldItem->increment(
+                    'quantity_in_stock',
+                    $oldItem->pivot->quantity
+                );
+            }
+
+            /** 2️⃣ حذف العناصر القديمة */
+            $inventoryTransaction->assistanceItems()->detach();
+
+            /** 3️⃣ تحديث بيانات المعاملة */
+            $inventoryTransaction->update([
+                'transaction_date' => $validated['transaction_date'],
+                'orientation' => $validated['orientation'],
+                'notes' => $validated['notes'] ?? null,
+                'project_id' => $validated['project_id'] ?? null,
+                'beneficiary_id' => $validated['beneficiary_id'] ?? null,
+            ]);
+
+            /** 4️⃣ إدخال العناصر الجديدة */
+            foreach ($validated['assistanceItems'] as $row) {
+
+                $item = AssistanceItem::lockForUpdate()
+                    ->findOrFail($row['assistance_item_id']);
+
+                if ($item->quantity_in_stock < $row['quantity']) {
+                    throw new \Exception("الكمية غير كافية للصنف: {$item->name}");
+                }
+
+                $inventoryTransaction->assistanceItems()->attach(
+                    $item->id,
+                    ['quantity' => $row['quantity']]
+                );
+
+                $item->decrement('quantity_in_stock', $row['quantity']);
+            }
+
+            return $inventoryTransaction;
+        });
+
+        return response()->json([
+            'message' => 'تم تحديث عملية الإخراج بنجاح',
+            'data' => $transaction->load('assistanceItems:id,name')
+        ], 200);
+    }
+
+
     public function destroy(InventoryTransaction $inventoryTransaction)
     {
         if ($inventoryTransaction->transaction_type !== 'out') {

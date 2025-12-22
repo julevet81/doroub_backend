@@ -23,6 +23,7 @@ return new class extends Migration
             $table->date('date_of_birth')->nullable();
             $table->string('national_id')->nullable();
             $table->date('joining_date')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->decimal('subscriptions', 15,2)->nullable();
             $table->string('skills')->nullable();
             $table->enum('study_level', ['primary', 'intermediate','secondary','high_school', 'bachelor', 'master', 'phd', 'other'])->nullable();

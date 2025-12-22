@@ -69,7 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     ############################## المتطوعين ##############################
     Route::get('volunteers/statistics', [VolunteerController::class, 'statistics']);
-    Route::apiResource('volunteers', VolunteerController::class)->middleware('permission:عرض المتطوعين');
+    Route::apiResource('volunteers', VolunteerController::class);
     
 
     ############################## انواع المساعدات ##############################
@@ -80,6 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     ############################## المتبرعين ##############################
     Route::get('donors-assistance-categories', [DonorController::class, 'categories']);
+    Route::get('donors/statitics', [DonorController::class, 'sttistics']);
     Route::apiResource('donors', DonorController::class);
 
     ############################## مساعدات المشاريع ##############################
