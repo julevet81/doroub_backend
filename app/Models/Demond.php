@@ -13,11 +13,26 @@ class Demond extends Model
         'beneficiary_id',
         'demand_date',
         'treated_by',
+        'attachement',
         'description',
     ];
+
 
     public function beneficiary()
     {
         return $this->belongsTo(Beneficiary::class);
+    }
+
+    public function items()
+    {
+        return $this->belongsToMany(
+            AssistanceItem::class,
+            'demonded_items'
+        )->withPivot('quantity')->withTimestamps();
+    }
+
+    public function treatedBy()
+    {
+        return $this->belongsTo(User::class, 'treated_by');
     }
 }

@@ -32,4 +32,14 @@ class FinancialTransaction extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function beneficiary()
+    {
+        return $this->belongsTo(Beneficiary::class);
+    }
 }

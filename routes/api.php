@@ -96,7 +96,6 @@ Route::middleware('auth:sanctum')->group(function () {
     ##############################  المستفيدين ##############################
     Route::get('beneficiaries/{district}/municipalities', [BeneficiaryController::class, 'getMunicipalities']);
     Route::get('beneficiaries/statistics', [BeneficiaryController::class, 'statistics']);
-    Route::get('beneficiaries/statistics', [BeneficiaryController::class, 'statistics']);
     Route::get('municipalities/by-district/{district}', [BeneficiaryController::class, 'getMunicipalities']);
     Route::apiResource('beneficiaries', BeneficiaryController::class);
 
@@ -121,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     ############################## الطلبات ##############################
     Route::apiResource('demonds', DemondController::class);
+    
     Route::apiResource('demonded-items', DemondedItemController::class);
 
     ############################## الاجهزة ##############################

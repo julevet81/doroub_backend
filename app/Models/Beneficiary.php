@@ -28,6 +28,7 @@ class Beneficiary extends Model
         'health_status',
         'income_source',
         'barcode',
+        'municipality_id',
         'district_id',
         'city',
         'neighborhood',

@@ -10,6 +10,7 @@ use App\Models\PartnerInfo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class BeneficiaryController extends Controller
 {
@@ -126,7 +127,7 @@ class BeneficiaryController extends Controller
             'barcode' => 'required|string|max:100|unique:beneficiaries,barcode,' . $beneficiary->id,
             'district_id' => 'required|exists:districts,id',
             'municipality_id' => 'nullable|exists:municipalities,id',
-            'beneficiary_category_id' => 'required|exists:beneficiary_categories,id',
+            'beneficiary_category_id' => 'nullable|exists:beneficiary_categories,id',
         ]);
 
         $beneficiary->update($validated);
@@ -155,12 +156,74 @@ class BeneficiaryController extends Controller
         ], 200);
     }
 
+    
+
     public function statistics()
     {
-        
+        $now = Carbon::now();
+
+        // 1️⃣ العدد الإجمالي للمستفيدين
+        $totalBeneficiaries = DB::table('beneficiaries')->count();
+
+        // 2️⃣ عدد المستفيدين المسجلين هذا الشهر
+        $thisMonthBeneficiaries = DB::table('beneficiaries')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->count();
+
+        // 3️⃣ متوسط عدد أفراد العائلات
+        $averageFamilyMembers = DB::table('beneficiaries')
+            ->whereNotNull('nbr_in_family')
+            ->avg('nbr_in_family');
+
+        // 4️⃣ عدد المسجلين خلال آخر 6 أشهر (حسب كل شهر)
+        $lastSixMonths = DB::table('beneficiaries')
+            ->selectRaw('
+            DATE_FORMAT(created_at, "%Y-%m") as month,
+            COUNT(*) as total
+        ')
+            ->where('created_at', '>=', $now->subMonths(6))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+        // 5️⃣ المستفيدين حسب الدائرة
+        $beneficiariesByDistrict = DB::table('beneficiaries')
+            ->join('districts', 'beneficiaries.district_id', '=', 'districts.id')
+            ->select(
+                'districts.id',
+                'districts.name',
+                DB::raw('COUNT(beneficiaries.id) as total')
+            )
+            ->groupBy('districts.id', 'districts.name')
+            ->get();
+
+        // 6️⃣ المستفيدين حسب الحالة الاجتماعية
+        $beneficiariesBySocialStatus = DB::table('beneficiaries')
+            ->select(
+                'social_status',
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('social_status')
+            ->get();
+
+        // 7️⃣ المستفيدين حسب حالة السكن
+        $beneficiariesByHouseStatus = DB::table('beneficiaries')
+            ->select(
+                'house_status',
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('house_status')
+            ->get();
+
         return response()->json([
-            'message' => 'Endpoint for statistics',
-            'data' => []
+            'total_beneficiaries' => $totalBeneficiaries,
+            'beneficiaries_this_month' => $thisMonthBeneficiaries,
+            'average_family_members' => round($averageFamilyMembers, 2),
+            'registrations_last_6_months' => $lastSixMonths,
+            'by_district' => $beneficiariesByDistrict,
+            'by_social_status' => $beneficiariesBySocialStatus,
+            'by_house_status' => $beneficiariesByHouseStatus,
         ], 200);
     }
 }

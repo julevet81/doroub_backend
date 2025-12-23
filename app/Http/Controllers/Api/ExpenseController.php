@@ -8,20 +8,118 @@ use App\Models\FinancialTransaction;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class ExpenseController extends Controller
 {
     public function index(Request $request)
     {
-        $expenses = FinancialTransaction::where('transaction_type', 'expense')
+        // =======================
+        // Dates
+        // =======================
+        $startOfThisMonth = Carbon::now()->startOfMonth();
+        $endOfThisMonth   = Carbon::now()->endOfMonth();
+
+        $startOfLastMonth = Carbon::now()->subMonth()->startOfMonth();
+        $endOfLastMonth   = Carbon::now()->subMonth()->endOfMonth();
+
+        // =======================
+        // Base Query (Reusable)
+        // =======================
+        $baseExpenseQuery = FinancialTransaction::query()
+            ->where('transaction_type', 'expense');
+
+        // =======================
+        // All Expenses (Paginated)
+        // =======================
+        $expenses = (clone $baseExpenseQuery)
             ->with(['donor', 'project', 'beneficiary'])
-            ->when($request->start_date && $request->end_date, fn($q) => $q->whereBetween('transaction_date', [$request->start_date, $request->end_date]))
+            ->when(
+                $request->start_date && $request->end_date,
+                fn($q) => $q->whereBetween('transaction_date', [
+                    $request->start_date,
+                    $request->end_date
+                ])
+            )
+            ->orderByDesc('transaction_date')
             ->paginate(20);
 
+        // =======================
+        // This Month Expenses
+        // =======================
+        $thisMonthExpenses = (clone $baseExpenseQuery)
+            ->whereBetween('transaction_date', [$startOfThisMonth, $endOfThisMonth]);
+
+        $thisMonthTotal = (clone $thisMonthExpenses)->sum('amount');
+        $thisMonthCount = (clone $thisMonthExpenses)->count();
+
+        // =======================
+        // Last Month Expenses
+        // =======================
+        $lastMonthExpenses = (clone $baseExpenseQuery)
+            ->whereBetween('transaction_date', [$startOfLastMonth, $endOfLastMonth]);
+
+        $lastMonthTotal = (clone $lastMonthExpenses)->sum('amount');
+        $lastMonthCount = (clone $lastMonthExpenses)->count();
+
+        // =======================
+        // Project Expenses Comparison
+        // =======================
+        $thisMonthProjectExpenses = (clone $thisMonthExpenses)
+            ->where('out_orientation', 'project')
+            ->sum('amount');
+
+        $lastMonthProjectExpenses = (clone $lastMonthExpenses)
+            ->where('out_orientation', 'project')
+            ->sum('amount');
+
+        // =======================
+        // Balance
+        // =======================
+        $currentBalance = FinancialTransaction::latest('transaction_date')
+            ->value('new_balance');
+
+        $lastMonthBalance = FinancialTransaction::whereDate(
+            'transaction_date',
+            '<=',
+            $endOfLastMonth
+        )
+            ->latest('transaction_date')
+            ->value('new_balance');
+
+        // =======================
+        // Response
+        // =======================
         return response()->json([
-            'data' => $expenses
+            'data' => [
+                'expenses' => $expenses,
+
+                'statistics' => [
+                    'this_month' => [
+                        'total_expenses' => $thisMonthTotal,
+                        'count' => $thisMonthCount,
+                        'project_expenses' => $thisMonthProjectExpenses,
+                    ],
+                    'last_month' => [
+                        'total_expenses' => $lastMonthTotal,
+                        'count' => $lastMonthCount,
+                        'project_expenses' => $lastMonthProjectExpenses,
+                    ],
+                    'comparison' => [
+                        'expenses_difference' => $thisMonthTotal - $lastMonthTotal,
+                        'count_difference' => $thisMonthCount - $lastMonthCount,
+                        'project_expenses_difference' => $thisMonthProjectExpenses - $lastMonthProjectExpenses,
+                        'balance_difference' => ($currentBalance ?? 0) - ($lastMonthBalance ?? 0),
+                    ],
+                    'balance' => [
+                        'current' => $currentBalance,
+                        'last_month' => $lastMonthBalance,
+                    ],
+                ]
+            ]
         ], 200);
     }
+
 
     public function store(Request $request)
     {

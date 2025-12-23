@@ -89,7 +89,7 @@ class InventoryOutController extends Controller
 
     public function show(InventoryTransaction $inventoryTransaction)
     {
-        if ($inventoryTransaction->transaction_type != "out") {
+        if ($inventoryTransaction->transaction_type != 'out') {
             return response()->json([
                 'message' => 'هذه العملية ليست إخراج مخزون'
             ], 400);

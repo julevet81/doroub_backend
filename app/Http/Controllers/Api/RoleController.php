@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
+
 class RoleController extends Controller
 {
     // عرض جميع الأدوار
@@ -70,7 +71,8 @@ class RoleController extends Controller
 
         $role = Role::findOrFail($id);
         $role->name = $request->name;
-        $role->description = $request->description;
+        $role->guard_name = $request->guard_name;
+
         $role->save();
 
         if ($request->permissions) {
@@ -86,9 +88,8 @@ class RoleController extends Controller
     }
 
     // حذف دور
-    public function destroy($id)
+    public function destroy(Role $role)
     {
-        $role = Role::findOrFail($id);
         $role->delete();
 
         return response()->json([

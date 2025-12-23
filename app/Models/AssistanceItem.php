@@ -32,4 +32,11 @@ class AssistanceItem extends Model
         return $this->belongsToMany(Project::class, 'project_assistances')
             ->withPivot('quantity');
     }
+
+    public function demonds()
+    {
+        return $this->belongsToMany(Demond::class, 'project_assistances')
+            ->withPivot('quantity')
+            ->withTimestamps();
+    }
 }
