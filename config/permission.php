@@ -169,7 +169,7 @@ return [
     'enable_wildcard_permission' => false,
 
     'defaults' => [
-        'guard' => 'api',
+        'guard_name' => 'api',
     ],
 
 

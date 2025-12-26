@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\DB;
 
 
 class RoleController extends Controller
@@ -27,7 +28,7 @@ class RoleController extends Controller
 
         $roleData = [
             'الاسم' => $role->name,
-            'الوصف' => $role->description,
+            //'الوصف' => $role->description,
             'الصلاحيات' => $role->permissions->pluck('name')
         ];
 
@@ -41,51 +42,73 @@ class RoleController extends Controller
     {
         $request->validate([
             'name' => 'required|string|unique:roles,name',
-            'description' => 'nullable|string',
-            'permissions' => 'nullable|array'
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'exists:permissions,id'
         ]);
 
-        $role = Role::create([
-            'name' => $request->name,
-            'description' => $request->description,
-        ]);
+        DB::beginTransaction();
+        try {
+            $role = Role::create([
+                'name' => $request->name,
+                'guard_name' => 'api'
+            ]);
 
-        if ($request->permissions) {
-            $role->syncPermissions($request->permissions);
+            if ($request->filled('permissions')) {
+                $role->syncPermissions($request->permissions);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'تم إنشاء الدور بنجاح',
+                'role' => $role->load('permissions')
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'حدث خطأ',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'تم إنشاء الدور بنجاح',
-            'data' => $role
-        ], 201);
     }
 
     // تحديث دور
     public function update(Request $request, $id)
     {
+        $role = Role::findOrFail($id);
+
         $request->validate([
-            'name' => 'required|string|unique:roles,name,' . $id,
-            'description' => 'nullable|string',
-            'permissions' => 'nullable|array'
+            'name' => 'required|string|unique:roles,name,' . $role->id,
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'exists:permissions,id'
         ]);
 
-        $role = Role::findOrFail($id);
-        $role->name = $request->name;
-        $role->guard_name = $request->guard_name;
+        DB::beginTransaction();
+        try {
+            $role->update([
+                'name' => $request->name
+            ]);
 
-        $role->save();
+            
+            if ($request->has('permissions')) {
+                $role->syncPermissions($request->permissions);
+            }
 
-        if ($request->permissions) {
-            $role->syncPermissions($request->permissions);
-        } else {
-            $role->syncPermissions([]);
+            DB::commit();
+
+            return response()->json([
+                'message' => 'تم تحديث الدور بنجاح',
+                'role' => $role->load('permissions')
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'حدث خطأ',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'تم تحديث الدور بنجاح',
-            'data' => $role
-        ], 200);
     }
+
 
     // حذف دور
     public function destroy(Role $role)

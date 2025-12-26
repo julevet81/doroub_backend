@@ -78,6 +78,7 @@ class DeviceController extends Controller
         return response()->json(['data' => $devices], 200);
     }
 
+    //  اتلاف جهاز
     public function destruct(Request $request, Device $device)
     {
         $request->validate([
