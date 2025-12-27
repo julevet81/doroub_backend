@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Volunteer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class VolunteerController extends Controller
@@ -17,6 +18,10 @@ class VolunteerController extends Controller
     // }
     public function index()
     {
+        if (!Auth::user()->can('عرض المتطوعين')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         return response()->json([
             'data' => Volunteer::all()
         ], 200);
@@ -110,6 +115,10 @@ class VolunteerController extends Controller
 
     public function statistics()
     {
+        if (!Auth::user()->can('اجصائيات المتطوعين')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $now = Carbon::now();
 
         return response()->json([

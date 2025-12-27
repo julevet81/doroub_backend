@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Registration;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class RegistrationController extends Controller
 {
@@ -13,6 +14,10 @@ class RegistrationController extends Controller
      */
     public function index(Request $request)
     {
+        if (!Auth::user()->can('التسجيلات')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $query = Registration::with('beneficiary');
 
         if ($request->district_id) {

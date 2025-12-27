@@ -9,11 +9,16 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class ExpenseController extends Controller
 {
     public function index(Request $request)
     {
+        if (!Auth::user()->can('عرض المصاريف')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         // =======================
         // Dates
         // =======================

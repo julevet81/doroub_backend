@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class DeviceController extends Controller
 {
     public function index()
     {
+        if (!Auth::user()->can('عرض الأجهزة')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $devices = Device::all();
         return response()->json(['data' => $devices], 200);
     }

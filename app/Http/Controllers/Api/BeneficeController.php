@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Benefice;
 use App\Models\Beneficiary;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BeneficeController extends Controller
 {
@@ -14,6 +15,9 @@ class BeneficeController extends Controller
      */
     public function index()
     {
+        if (!Auth::user()->can('عرض الإستفادات')) {
+            abort(403, 'غير مصرح لك');
+        }
         $benefices = Benefice::with('beneficiary')->paginate(20);
 
         return response()->json([

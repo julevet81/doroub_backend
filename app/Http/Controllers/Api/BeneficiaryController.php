@@ -11,11 +11,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class BeneficiaryController extends Controller
 {
     public function index(Request $request)
     {
+        if (!Auth::user()->can('عرض المستفيدين')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $query = Beneficiary::query();
 
         if ($request->district_id) {
@@ -160,6 +165,10 @@ class BeneficiaryController extends Controller
 
     public function statistics()
     {
+        if (!Auth::user()->can('إحصائيات المستفيدين')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $now = Carbon::now();
 
         // 1️⃣ العدد الإجمالي للمستفيدين

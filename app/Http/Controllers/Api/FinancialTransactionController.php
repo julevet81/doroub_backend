@@ -8,6 +8,7 @@ use App\Models\Donor;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,6 +16,9 @@ class FinancialTransactionController extends Controller
 {
     public function index(Request $request)
     {
+        if (!Auth::user()->can('المداخيل')) {
+            abort(403, 'غير مصرح لك');
+        }
         // =======================
         // Dates
         // =======================
@@ -298,6 +302,10 @@ class FinancialTransactionController extends Controller
 
     public function statistics(Request $request)
     {
+        if (!Auth::user()->can('عرض المالية')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $validated = $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',

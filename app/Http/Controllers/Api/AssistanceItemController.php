@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AssistanceItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AssistanceItemController extends Controller
 {
@@ -13,6 +14,9 @@ class AssistanceItemController extends Controller
      */
     public function index()
     {
+        if (!Auth::user()->can('عناصر المخزون')) {
+            abort(403, 'غير مصرح لك');
+        }
         return response()->json([
             'data' => AssistanceItem::all()
         ], 200);

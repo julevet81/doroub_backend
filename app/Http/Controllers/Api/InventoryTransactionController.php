@@ -7,6 +7,7 @@ use App\Models\AssistanceItem;
 use App\Models\InventoryTransaction;
 use App\Models\TransactionItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class InventoryTransactionController extends Controller
@@ -14,6 +15,10 @@ class InventoryTransactionController extends Controller
 
     public function index()
     {
+        if (!Auth::user()->can('الداخل للمخزون')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         // جميع عمليات الإدخال
         $transactions = InventoryTransaction::where('transaction_type', 'in')
             ->with(['donor', 'assistanceItems', 'project'])

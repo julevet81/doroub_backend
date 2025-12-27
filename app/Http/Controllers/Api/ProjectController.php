@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\AssistanceItem;
 use App\Models\Project;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ProjectController extends Controller
 {
     public function index()
     {
+        if (!Auth::user()->can('عرض المشاريع')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $projects = Project::with(['items', 'volunteers'])->get();
 
         return response()->json([

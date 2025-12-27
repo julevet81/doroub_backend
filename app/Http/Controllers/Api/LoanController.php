@@ -10,12 +10,17 @@ use App\Models\District;
 use App\Models\Loan;
 use App\Models\Municipality;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class LoanController extends Controller
 {
     // عرض جميع الإعارات
     public function index()
     {
+        if (!Auth::user()->can('الإعارات')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $loans = Loan::with(['device', 'beneficiary'])->get();
         return response()->json([
             'message' => 'تم جلب جميع الإعارات بنجاح',

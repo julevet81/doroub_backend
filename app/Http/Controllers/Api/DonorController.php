@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AssistanceCategory;
 use App\Models\Donor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DonorController extends Controller
 {
@@ -14,6 +15,10 @@ class DonorController extends Controller
      */
     public function index()
     {
+        if (!Auth::user()->can('المتبرعين')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         return response()->json([
             'data' => Donor::with('assistanceCategory')->get()
         ], 200);

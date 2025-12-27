@@ -7,12 +7,17 @@ use App\Models\AssistanceItem;
 use App\Models\InventoryTransaction;
 use App\Models\TransactionItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class InventoryOutController extends Controller
 {
     public function index()
     {
+        if (!Auth::user()->can('الخارج من المخزون')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $transactions = InventoryTransaction::query()
             ->where('transaction_type', 'out')
             ->select('id', 'orientation', 'transaction_date')

@@ -17,6 +17,10 @@ class DemondController extends Controller
      */
     public function index()
     {
+        if (!Auth::user()->can('الطلبات')) {
+            abort(403, 'غير مصرح لك');
+        }
+
         $demonds = Demond::with(['beneficiary', 'assistanceItems'])->paginate(20);
 
         return response()->json([
