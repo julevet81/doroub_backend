@@ -13,10 +13,6 @@ class UserController extends Controller
     // عرض جميع المستخدمين
     public function index()
     {
-        if (!Auth::user()->can('ادارة المستخدمين')) {
-            abort(403, 'غير مصرح لك');
-        }
-
         $users = User::all();
         return response()->json([
             'message' => 'تم جلب جميع المستخدمين بنجاح',
@@ -27,9 +23,6 @@ class UserController extends Controller
     // عرض مستخدم واحد
     public function show($id)
     {
-        if (!Auth::user()->can('عرض مستخدم')) {
-            abort(403, 'غير مصرح لك');
-        }
         $user = User::findOrFail($id);
         return response()->json([
             'message' => 'تم جلب بيانات المستخدم بنجاح',
@@ -40,10 +33,6 @@ class UserController extends Controller
     // إنشاء مستخدم جديد
     public function store(Request $request)
     {
-        if (!Auth::user()->can('إضافة مستخدمين')) {
-            abort(403, 'غير مصرح لك');
-        }
-
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -72,9 +61,6 @@ class UserController extends Controller
     // تحديث بيانات المستخدم
     public function update(Request $request, $id)
     {
-        if (!Auth::user()->can('تعديل مستخدم')) {
-            abort(403, 'غير مصرح لك');
-        }
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -105,9 +91,6 @@ class UserController extends Controller
     // حذف المستخدم
     public function destroy($id)
     {
-        if (!Auth::user()->can('حذف مستخدم')) {
-            abort(403, 'غير مصرح لك');
-        }
 
         $user = User::findOrFail($id);
         $user->delete();
