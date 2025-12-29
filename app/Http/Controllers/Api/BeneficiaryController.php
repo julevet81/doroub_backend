@@ -17,6 +17,10 @@ class BeneficiaryController extends Controller
 {
     public function index(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المستفيدين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         if (!Auth::user()->can('عرض المستفيدين')) {
             abort(403, 'غير مصرح لك');
         }
@@ -54,6 +58,9 @@ class BeneficiaryController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المستفيدين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'national_id_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
@@ -112,6 +119,9 @@ class BeneficiaryController extends Controller
 
     public function show(Beneficiary $beneficiary)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المستفيدين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         return response()->json([
             'data' => $beneficiary->load('partner', 'children')
         ], 200);
@@ -119,6 +129,9 @@ class BeneficiaryController extends Controller
 
     public function update(Request $request, Beneficiary $beneficiary)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المستفيدين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'date_of_birth' => 'required|date',
@@ -145,6 +158,9 @@ class BeneficiaryController extends Controller
 
     public function destroy(Beneficiary $beneficiary)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المستفيدين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $beneficiary->delete();
 
         return response()->json([
@@ -165,8 +181,8 @@ class BeneficiaryController extends Controller
 
     public function statistics()
     {
-        if (!Auth::user()->can('إحصائيات المستفيدين')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('إحصائيات المستفيدين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
 
         $now = Carbon::now();

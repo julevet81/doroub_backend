@@ -15,10 +15,9 @@ class ExpenseController extends Controller
 {
     public function index(Request $request)
     {
-        if (!Auth::user()->can('عرض المصاريف')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('عرض المصاريف')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-
         // =======================
         // Dates
         // =======================
@@ -128,6 +127,9 @@ class ExpenseController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المصاريف')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'out_orientation' => 'required|string',
             'transaction_date' => 'required|date',
@@ -166,6 +168,9 @@ class ExpenseController extends Controller
 
     public function show($id)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المصاريف')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $expense = FinancialTransaction::with(['donor', 'project', 'beneficiary'])->findOrFail($id);
 
         return response()->json([
@@ -175,6 +180,9 @@ class ExpenseController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المصاريف')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $expense = FinancialTransaction::findOrFail($id);
 
         $validated = $request->validate([
@@ -196,6 +204,9 @@ class ExpenseController extends Controller
 
     public function destroy($id)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المصاريف')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $expense = FinancialTransaction::findOrFail($id);
 
         if ($expense->attachment) {

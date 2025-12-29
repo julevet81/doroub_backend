@@ -13,10 +13,10 @@ class ProjectController extends Controller
 {
     public function index()
     {
-        if (!Auth::user()->can('عرض المشاريع')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-
+        
         $projects = Project::with(['items', 'volunteers'])->get();
 
         return response()->json([
@@ -29,7 +29,9 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-
+        if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string',
@@ -86,11 +88,11 @@ class ProjectController extends Controller
         ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Project $project)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         return response()->json([
             'data' => $project->load(['items', 'volunteers'])
         ], 200);
@@ -101,6 +103,9 @@ class ProjectController extends Controller
      */
     public function update(Request $request, Project $project)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string',
@@ -163,12 +168,11 @@ class ProjectController extends Controller
             'data' => $project->load(['items', 'volunteers'])
         ], 200);
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Project $project)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $project->delete();
 
         return response()->json([

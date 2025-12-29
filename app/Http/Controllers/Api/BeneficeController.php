@@ -10,13 +10,10 @@ use Illuminate\Support\Facades\Auth;
 
 class BeneficeController extends Controller
 {
-    /**
-     * Display a listing of benefices.
-     */
     public function index()
     {
-        if (!Auth::user()->can('عرض الإستفادات')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('عرض الإستفادات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
         $benefices = Benefice::with('beneficiary')->paginate(20);
 
@@ -25,11 +22,11 @@ class BeneficeController extends Controller
         ], 200);
     }
 
-    /**
-     * Store a newly created benefice.
-     */
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الإستفادات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'beneficiary_id' => 'required|exists:beneficiaries,id',
             'type' => 'required|in:financial,material,service',
@@ -43,11 +40,11 @@ class BeneficeController extends Controller
         ], 201);
     }
 
-    /**
-     * Display a specific benefice.
-     */
     public function show($id)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الإستفادات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $benefice = Benefice::with('beneficiary')->findOrFail($id);
 
         return response()->json([
@@ -60,6 +57,9 @@ class BeneficeController extends Controller
      */
     public function update(Request $request, $id)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الإستفادات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $benefice = Benefice::findOrFail($id);
 
         $validated = $request->validate([

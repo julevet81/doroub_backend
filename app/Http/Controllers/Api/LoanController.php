@@ -17,10 +17,9 @@ class LoanController extends Controller
     // عرض جميع الإعارات
     public function index()
     {
-        if (!Auth::user()->can('الإعارات')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('الإعارات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-
         $loans = Loan::with(['device', 'beneficiary'])->get();
         return response()->json([
             'message' => 'تم جلب جميع الإعارات بنجاح',
@@ -29,6 +28,9 @@ class LoanController extends Controller
     }
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('الإعارات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $request->validate([
             'device_id' => 'required|exists:devices,id',
             'loan_date' => 'required|date',
@@ -72,6 +74,9 @@ class LoanController extends Controller
 
     public function show($id)
     {
+        if (!Auth::user() || !Auth::user()->can('الإعارات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $loan = Loan::with(['device', 'beneficiary'])->findOrFail($id);
 
         return response()->json([
@@ -82,6 +87,9 @@ class LoanController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!Auth::user() || !Auth::user()->can('الإعارات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $loan = Loan::findOrFail($id);
 
         $request->validate([
@@ -142,6 +150,9 @@ class LoanController extends Controller
 
     public function destroy($id)
     {
+        if (!Auth::user() || !Auth::user()->can('الإعارات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $loan = Loan::findOrFail($id);
         $loan->delete();
 

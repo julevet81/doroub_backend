@@ -16,9 +16,10 @@ class FinancialTransactionController extends Controller
 {
     public function index(Request $request)
     {
-        if (!Auth::user()->can('المداخيل')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('المداخيل')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         // =======================
         // Dates
         // =======================
@@ -128,6 +129,10 @@ class FinancialTransactionController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('المداخيل')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $validated = $request->validate([
             'orientation' => 'required|string|in:project,family,other', // نوع الإيراد
             'transaction_date' => 'required|date',
@@ -189,6 +194,10 @@ class FinancialTransactionController extends Controller
 
     public function show($id)
     {
+        if (!Auth::user() || !Auth::user()->can('المداخيل')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         // =======================
         // جلب المعاملة مع العلاقات
         // =======================
@@ -218,6 +227,10 @@ class FinancialTransactionController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!Auth::user() || !Auth::user()->can('المداخيل')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $transaction = FinancialTransaction::find($id);
 
         if (!$transaction) {
@@ -293,6 +306,10 @@ class FinancialTransactionController extends Controller
 
     public function destroy(FinancialTransaction $financialTransaction)
     {
+        if (!Auth::user() || !Auth::user()->can('المداخيل')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $financialTransaction->delete();
 
         return response()->json([
@@ -302,8 +319,8 @@ class FinancialTransactionController extends Controller
 
     public function statistics(Request $request)
     {
-        if (!Auth::user()->can('عرض المالية')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('عرض المالية')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
 
         $validated = $request->validate([

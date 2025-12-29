@@ -16,7 +16,7 @@ class RoleController extends Controller
     public function index()
     {
         if (!Auth::user()->can('أدارة الأدوار')) {
-            abort(403, 'غير مصرح لك');
+            abort(403, 'غير مصرح لك بهذا الاجراء');
         }
 
         $roles = Role::with('permissions')->get();
@@ -29,7 +29,9 @@ class RoleController extends Controller
     // عرض دور واحد
     public function show($id)
     {
-        
+        if (!Auth::user() || !Auth::user()->can('أدارة الأدوار')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $role = Role::with('permissions')->findOrFail($id);
 
         $roleData = [
@@ -46,10 +48,10 @@ class RoleController extends Controller
     // إنشاء دور جديد
     public function store(Request $request)
     {
-        if (!Auth::user()->can('إضافة أدوار')) {
-            abort(403, 'غير مصرح لك');
-        }
 
+        if (!Auth::user() || !Auth::user()->can('أدارة الأدوار')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $request->validate([
             'name' => 'required|string|unique:roles,name',
             'permissions' => 'nullable|array',
@@ -85,6 +87,9 @@ class RoleController extends Controller
     // تحديث دور
     public function update(Request $request, $id)
     {
+        if (!Auth::user() || !Auth::user()->can('أدارة الأدوار')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $role = Role::findOrFail($id);
 
         $request->validate([
@@ -123,6 +128,9 @@ class RoleController extends Controller
     // حذف دور
     public function destroy(Role $role)
     {
+        if (!Auth::user() || !Auth::user()->can('أدارة الأدوار')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $role->delete();
 
         return response()->json([

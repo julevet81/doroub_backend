@@ -170,6 +170,14 @@ return [
 
     'defaults' => [
         'guard_name' => 'api',
+        'passwords' => 'users',
+    ],
+
+    'guards' => [
+        'api' => [
+            'driver' => 'sanctum',
+            'provider' => 'users',
+        ],
     ],
 
 

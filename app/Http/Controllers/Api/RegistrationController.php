@@ -14,10 +14,9 @@ class RegistrationController extends Controller
      */
     public function index(Request $request)
     {
-        if (!Auth::user()->can('التسجيلات')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('التسجيلات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-
         $query = Registration::with('beneficiary');
 
         if ($request->district_id) {
@@ -44,12 +43,11 @@ class RegistrationController extends Controller
 
         return response()->json($registrations);
     }
-
-    /**
-     * Store a newly created registration.
-     */
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('التسجيلات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'beneficiary_id' => 'required|exists:beneficiaries,id',
             'status' => 'required|in:accepted,in_study,rejected',
@@ -63,22 +61,22 @@ class RegistrationController extends Controller
             'data' => $registration
         ], 201);
     }
-
-    /**
-     * Display a specific registration.
-     */
     public function show(Registration $registration)
     {
+        if (!Auth::user() || !Auth::user()->can('التسجيلات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $registration->load('beneficiary');
 
         return response()->json($registration);
     }
-
-    /**
-     * Update a specific registration.
-     */
     public function update(Request $request, Registration $registration)
     {
+        if (!Auth::user() || !Auth::user()->can('التسجيلات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $validated = $request->validate([
             'beneficiary_id' => 'required|exists:beneficiaries,id',
             'status' => 'required|in:accepted,in_study,rejected',
@@ -92,12 +90,12 @@ class RegistrationController extends Controller
             'data' => $registration
         ]);
     }
-
-    /**
-     * Remove a registration.
-     */
     public function destroy(Registration $registration)
     {
+        if (!Auth::user() || !Auth::user()->can('التسجيلات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+        
         $registration->delete();
 
         return response()->json([

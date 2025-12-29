@@ -12,16 +12,18 @@ class DeviceController extends Controller
 {
     public function index()
     {
-        if (!Auth::user()->can('عرض الأجهزة')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('عرض الأجهزة')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-
         $devices = Device::all();
         return response()->json(['data' => $devices], 200);
     }
 
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الأجهزة')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'serial_number' => 'required|string|unique:devices',
@@ -39,12 +41,18 @@ class DeviceController extends Controller
 
     public function show($id)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الأجهزة')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $device = Device::findOrFail($id);
         return response()->json(['data' => $device], 200);
     }
 
     public function update(Request $request, $id)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الأجهزة')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $device = Device::findOrFail($id);
 
         $validated = $request->validate([
@@ -63,6 +71,10 @@ class DeviceController extends Controller
 
     public function destroy($id)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الأجهزة')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $device = Device::findOrFail($id);
         $device->delete();
 
@@ -72,6 +84,9 @@ class DeviceController extends Controller
     // الأجهزة المعارة
     public function loaned()
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الأجهزة')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $devices = Device::where('status', 1)->get();
         return response()->json(['data' => $devices], 200);
     }
@@ -79,6 +94,9 @@ class DeviceController extends Controller
     // الأجهزة المعادة
     public function returned()
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الأجهزة')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $devices = Device::where('status', 0)->where('is_destructed', 0)->get();
         return response()->json(['data' => $devices], 200);
     }
@@ -86,6 +104,9 @@ class DeviceController extends Controller
     //  اتلاف جهاز
     public function destruct(Request $request, Device $device)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الأجهزة')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $request->validate([
             'destruction_reason' => 'required|string|max:1000',
         ]);
@@ -104,6 +125,9 @@ class DeviceController extends Controller
     // الأجهزة المتلفة
     public function destructed()
     {
+        if (!Auth::user() || !Auth::user()->can('عرض الأجهزة')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $devices = Device::where('is_destructed', true)->get();
         return response()->json(['data' => $devices], 200);
     }

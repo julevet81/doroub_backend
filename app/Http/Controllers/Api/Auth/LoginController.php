@@ -23,7 +23,7 @@ class LoginController extends Controller
                 'message' => 'Invalid credentials'
             ], 401);
         }
-
+        
         $user->tokens()->delete();
 
         $token = $user->createToken('api-token')->plainTextToken;

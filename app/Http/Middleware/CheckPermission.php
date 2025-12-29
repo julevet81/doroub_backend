@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckPermission
@@ -15,7 +16,7 @@ class CheckPermission
      */
     public function handle(Request $request, Closure $next, $permission): Response
     {
-        if (!$request->user() || !$request->user()->hasPermissionTo($permission)){
+        if (!Auth::user() || !Auth::user()->hasPermissionTo($permission)){
             return response()->json(['message' => 'غير مصرح لك بهذا الإجراء'], 403);
         }
         return $next($request);

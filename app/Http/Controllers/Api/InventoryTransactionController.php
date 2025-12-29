@@ -15,8 +15,8 @@ class InventoryTransactionController extends Controller
 
     public function index()
     {
-        if (!Auth::user()->can('الداخل للمخزون')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
 
         // جميع عمليات الإدخال
@@ -55,6 +55,9 @@ class InventoryTransactionController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'donor_id' => 'nullable|exists:donors,id',
             'transaction_date' => 'required|date',
@@ -114,6 +117,9 @@ class InventoryTransactionController extends Controller
 
     public function show(InventoryTransaction $inventoryTransaction)
     {
+        if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         return response()->json([
             'data' => $inventoryTransaction->load([
                 'donor',
@@ -124,6 +130,9 @@ class InventoryTransactionController extends Controller
 
     public function update(Request $request, InventoryTransaction $inventoryTransaction)
     {
+        if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'donor_id' => 'nullable|exists:donors,id',
             'transaction_date' => 'sometimes|date',
@@ -141,6 +150,9 @@ class InventoryTransactionController extends Controller
 
     public function destroy(InventoryTransaction $inventoryTransaction)
     {
+        if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         DB::transaction(function () use ($inventoryTransaction) {
 
             foreach ($inventoryTransaction->assistanceItems as $item) {

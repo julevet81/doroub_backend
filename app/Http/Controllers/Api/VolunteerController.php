@@ -18,6 +18,10 @@ class VolunteerController extends Controller
     // }
     public function index()
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المتطوعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         if (!Auth::user()->can('عرض المتطوعين')) {
             abort(403, 'غير مصرح لك');
         }
@@ -26,12 +30,12 @@ class VolunteerController extends Controller
             'data' => Volunteer::all()
         ], 200);
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المتطوعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'membership_id' => 'required|string|unique:volunteers,membership_id',
@@ -58,22 +62,22 @@ class VolunteerController extends Controller
             'data' => $volunteer
         ], 201);
     }
-
-    /**
-     * Display the specified resource.
-     */
     public function show(Volunteer $volunteer)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المتطوعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         return response()->json([
             'data' => $volunteer
         ], 200);
     }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Volunteer $volunteer)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المتطوعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'membership_id' => 'nullable|string|unique:volunteers,membership_id,' . $volunteer->id,
@@ -100,12 +104,12 @@ class VolunteerController extends Controller
             'data' => $volunteer
         ], 200);
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Volunteer $volunteer)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المتطوعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $volunteer->delete();
 
         return response()->json([
@@ -115,8 +119,8 @@ class VolunteerController extends Controller
 
     public function statistics()
     {
-        if (!Auth::user()->can('اجصائيات المتطوعين')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('اجصائيات المتطوعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
 
         $now = Carbon::now();

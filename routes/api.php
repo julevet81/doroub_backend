@@ -141,7 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('districts', DistrictController::class);
 
     ############################## المستخدمين ##############################
-    Route::get('users', [UserController::class, 'index'])->middleware('permission:ادارة المستخدمين');
+    Route::get('users', [UserController::class, 'index']);
     Route::post('users', [UserController::class, 'store']);
     Route::get('users/{user}', [UserController::class, 'show']);
     Route::put('users/{user}', [UserController::class, 'update']);

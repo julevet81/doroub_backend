@@ -17,10 +17,9 @@ class DemondController extends Controller
      */
     public function index()
     {
-        if (!Auth::user()->can('الطلبات')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('الطلبات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-
         $demonds = Demond::with(['beneficiary', 'assistanceItems'])->paginate(20);
 
         return response()->json([
@@ -30,6 +29,9 @@ class DemondController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('الطلبات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'beneficiary_id' => 'required|exists:beneficiaries,id',
             'demand_date' => 'required|date',
@@ -80,6 +82,9 @@ class DemondController extends Controller
 
     public function show($id)
     {
+        if (!Auth::user() || !Auth::user()->can('الطلبات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $demond = Demond::with([
             'beneficiary',
             'items',
@@ -113,6 +118,9 @@ class DemondController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!Auth::user() || !Auth::user()->can('الطلبات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $demond = Demond::findOrFail($id);
 
         $validated = $request->validate([
@@ -186,6 +194,9 @@ class DemondController extends Controller
 
     public function destroy($id)
     {
+        if (!Auth::user() || !Auth::user()->can('الطلبات')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $demond = Demond::findOrFail($id);
 
         DB::beginTransaction();

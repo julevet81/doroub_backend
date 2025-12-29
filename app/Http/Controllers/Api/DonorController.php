@@ -15,8 +15,8 @@ class DonorController extends Controller
      */
     public function index()
     {
-        if (!Auth::user()->can('المتبرعين')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('المتبرعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
 
         return response()->json([
@@ -29,6 +29,10 @@ class DonorController extends Controller
      */
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('المتبرعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'activity' => 'required|string|unique:donors,activity',
@@ -44,12 +48,12 @@ class DonorController extends Controller
             'data' => $donor->load('assistanceCategory')
         ], 201);
     }
-
-    /**
-     * Display the specified resource.
-     */
     public function show(Donor $donor)
     {
+        if (!Auth::user() || !Auth::user()->can('المتبرعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         return response()->json([
             'data' => $donor->load('assistanceCategory')
         ], 200);
@@ -60,6 +64,10 @@ class DonorController extends Controller
      */
     public function update(Request $request, Donor $donor)
     {
+        if (!Auth::user() || !Auth::user()->can('المتبرعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $validated = $request->validate([
             'full_name' => 'sometimes|string|max:255',
             'activity' => 'sometimes|string|unique:donors,activity,' . $donor->id,
@@ -75,12 +83,12 @@ class DonorController extends Controller
             'data' => $donor->load('assistanceCategory')
         ], 200);
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Donor $donor)
     {
+        if (!Auth::user() || !Auth::user()->can('المتبرعين')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+        
         $donor->delete();
 
         return response()->json([

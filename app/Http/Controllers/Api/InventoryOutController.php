@@ -14,10 +14,9 @@ class InventoryOutController extends Controller
 {
     public function index()
     {
-        if (!Auth::user()->can('الخارج من المخزون')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-
         $transactions = InventoryTransaction::query()
             ->where('transaction_type', 'out')
             ->select('id', 'orientation', 'transaction_date')
@@ -43,6 +42,9 @@ class InventoryOutController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'transaction_date' => 'required|date',
             'orientation' => 'required|in:project,beneficiary,other',
@@ -94,6 +96,10 @@ class InventoryOutController extends Controller
 
     public function show(InventoryTransaction $inventoryTransaction)
     {
+        if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         if ($inventoryTransaction->transaction_type != 'out') {
             return response()->json([
                 'message' => 'هذه العملية ليست إخراج مخزون'
@@ -111,6 +117,9 @@ class InventoryOutController extends Controller
 
     public function update(Request $request, InventoryTransaction $inventoryTransaction)
     {
+        if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         abort_if($inventoryTransaction->transaction_type !== 'out', 404);
 
         $validated = $request->validate([
@@ -175,6 +184,9 @@ class InventoryOutController extends Controller
 
     public function destroy(InventoryTransaction $inventoryTransaction)
     {
+        if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         if ($inventoryTransaction->transaction_type !== 'out') {
             return response()->json([
                 'message' => 'عملية غير صالحة'

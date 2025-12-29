@@ -9,13 +9,11 @@ use Illuminate\Support\Facades\Auth;
 
 class AssistanceItemController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    
     public function index()
     {
-        if (!Auth::user()->can('عناصر المخزون')) {
-            abort(403, 'غير مصرح لك');
+        if (!Auth::user() || !Auth::user()->can('عناصر المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
         return response()->json([
             'data' => AssistanceItem::all()
@@ -27,6 +25,9 @@ class AssistanceItemController extends Controller
      */
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('عناصر المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
         ]);
@@ -49,6 +50,9 @@ class AssistanceItemController extends Controller
      */
     public function show(AssistanceItem $assistanceItem)
     {
+        if (!Auth::user() || !Auth::user()->can('عناصر المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         return response()->json([
             'data' => $assistanceItem
         ], 200);
@@ -59,6 +63,9 @@ class AssistanceItemController extends Controller
      */
     public function update(Request $request, AssistanceItem $assistanceItem)
     {
+        if (!Auth::user() || !Auth::user()->can('عناصر المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'quantity_in_stock' => 'sometimes|integer|min:0',
@@ -77,6 +84,9 @@ class AssistanceItemController extends Controller
      */
     public function destroy(AssistanceItem $assistanceItem)
     {
+        if (!Auth::user() || !Auth::user()->can('عناصر المخزون')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
         $assistanceItem->delete();
 
         return response()->json([
