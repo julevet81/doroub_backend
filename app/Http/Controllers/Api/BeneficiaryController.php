@@ -141,7 +141,7 @@ class BeneficiaryController extends Controller
             'address' => 'nullable|string|max:500',
             'social_status' => 'required|in:maried,single,divorced,widowed',
             'nbr_in_family' => 'required|integer|min:1',
-            'partner_id' => 'nullable|exists:partners,id',
+            'partner_id' => 'nullable|exists:partner_infos,id',
             'barcode' => 'required|string|max:100|unique:beneficiaries,barcode,' . $beneficiary->id,
             'district_id' => 'required|exists:districts,id',
             'municipality_id' => 'nullable|exists:municipalities,id',

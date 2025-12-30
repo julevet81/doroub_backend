@@ -88,7 +88,6 @@ class DemondController extends Controller
         $demond = Demond::with([
             'beneficiary',
             'items',
-            'items.pivot',
             'treatedBy'
         ])->findOrFail($id);
 
