@@ -15,8 +15,10 @@ return new class extends Migration
             $table->id();
             $table->enum('transaction_type', ['in', 'out']);
             $table->foreignId('project_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('beneficiary_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('donor_id')->nullable()->constrained()->onDelete('set null');
-            $table->enum('orientation', ['project', 'inventory', 'beneficiary', 'other'])->default('inventory');
+            $table->enum('orientation', ['project', 'inventory', 'beneficiary', 'other'])->nullable();
+            $table->enum('orientation_out', ['project', 'beneficiary', 'other'])->nullable();
             $table->date('transaction_date');
             $table->text('notes')->nullable();
             $table->timestamps();

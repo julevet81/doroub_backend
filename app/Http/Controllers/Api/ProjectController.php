@@ -8,6 +8,7 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
@@ -24,14 +25,12 @@ class ProjectController extends Controller
         ], 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string',
@@ -50,43 +49,62 @@ class ProjectController extends Controller
             'volunteers.*.position' => 'nullable|string|max:255',
         ]);
 
-        $project = DB::transaction(function () use ($validated) {
+        try {
+            $project = DB::transaction(function () use ($validated) {
 
-            $project = Project::create([
-                'name' => $validated['name'],
-                'type' => $validated['type'],
-                'start_date' => $validated['start_date'],
-                'end_date' => $validated['end_date'] ?? null,
-                'budget' => $validated['budget'] ?? null,
-                'status' => $validated['status'],
-                'notes' => $validated['notes'] ?? null,
-            ]);
+                // 🔹 التحقق من الكميات قبل إنشاء المشروع
+                foreach ($validated['items'] as $item) {
+                    $assistanceItem = AssistanceItem::lockForUpdate()->find($item['id']);
 
-            foreach ($validated['items'] as $item) {
-                $project->items()->attach($item['id'], [
-                    'quantity' => $item['quantity']
+                    if ($item['quantity'] > $assistanceItem->quantity_in_stock) {
+                        throw ValidationException::withMessages([
+                            'items' => "الكمية غير كافية للعنصر: {$assistanceItem->name}"
+                        ]);
+                    }
+                }
+
+                $project = Project::create([
+                    'name' => $validated['name'],
+                    'type' => $validated['type'],
+                    'start_date' => $validated['start_date'],
+                    'end_date' => $validated['end_date'] ?? null,
+                    'budget' => $validated['budget'] ?? null,
+                    'status' => $validated['status'],
+                    'notes' => $validated['notes'] ?? null,
                 ]);
 
-                AssistanceItem::where('id', $item['id'])
-                    ->decrement('quantity_in_stock', $item['quantity']);
-            }
-
-            if (!empty($validated['volunteers'])) {
-                foreach ($validated['volunteers'] as $vol) {
-                    $project->volunteers()->attach($vol['id'], [
-                        'position' => $vol['position'] ?? null
+                foreach ($validated['items'] as $item) {
+                    $project->items()->attach($item['id'], [
+                        'quantity' => $item['quantity']
                     ]);
+
+                    AssistanceItem::where('id', $item['id'])
+                        ->decrement('quantity_in_stock', $item['quantity']);
                 }
-            }
 
-            return $project;
-        });
+                if (!empty($validated['volunteers'])) {
+                    foreach ($validated['volunteers'] as $vol) {
+                        $project->volunteers()->attach($vol['id'], [
+                            'position' => $vol['position'] ?? null
+                        ]);
+                    }
+                }
 
-        return response()->json([
-            'message' => 'تم إنشاء المشروع بنجاح',
-            'data' => $project->load(['items', 'volunteers'])
-        ], 201);
+                return $project;
+            });
+
+            return response()->json([
+                'message' => 'تم إنشاء المشروع بنجاح',
+                'data' => $project->load(['items', 'volunteers'])
+            ], 201);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'فشل إنشاء المشروع',
+                'errors' => $e->errors()
+            ], 422);
+        }
     }
+
 
     public function show(Project $project)
     {
@@ -98,14 +116,12 @@ class ProjectController extends Controller
         ], 200);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Project $project)
     {
         if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string',
@@ -124,50 +140,74 @@ class ProjectController extends Controller
             'volunteers.*.position' => 'nullable|string|max:255',
         ]);
 
-        DB::transaction(function () use ($validated, $project) {
+        try {
+            DB::transaction(function () use ($validated, $project) {
 
-            // إعادة الكمية القديمة للمخزون
-            foreach ($project->items as $old) {
-                AssistanceItem::where('id', $old->id)
-                    ->increment('quantity_in_stock', $old->pivot->quantity);
-            }
+                /** 1️⃣ حفظ الكميات القديمة */
+                $oldItems = $project->items()->withPivot('quantity')->get();
 
-            $project->update([
-                'name' => $validated['name'],
-                'type' => $validated['type'],
-                'start_date' => $validated['start_date'],
-                'end_date' => $validated['end_date'] ?? null,
-                'amount' => $validated['amount'] ?? null,
-                'status' => $validated['status'],
-                'notes' => $validated['notes'] ?? null,
-            ]);
+                /** 2️⃣ إرجاع الكميات القديمة إلى المخزن */
+                foreach ($oldItems as $old) {
+                    AssistanceItem::where('id', $old->id)
+                        ->increment('quantity_in_stock', $old->pivot->quantity);
+                }
 
-            $project->items()->detach();
-            $project->volunteers()->detach();
+                /** 3️⃣ التحقق من توفر الكميات الجديدة */
+                foreach ($validated['items'] as $item) {
+                    $assistanceItem = AssistanceItem::lockForUpdate()->find($item['id']);
 
-            foreach ($validated['items'] as $item) {
-                $project->items()->attach($item['id'], [
-                    'quantity' => $item['quantity']
+                    if ($item['quantity'] > $assistanceItem->quantity_in_stock) {
+                        throw ValidationException::withMessages([
+                            'items' => "الكمية غير كافية للعنصر {$assistanceItem->name} (المتاح: {$assistanceItem->quantity_in_stock})"
+                        ]);
+                    }
+                }
+
+                /** 4️⃣ تحديث بيانات المشروع */
+                $project->update([
+                    'name' => $validated['name'],
+                    'type' => $validated['type'],
+                    'start_date' => $validated['start_date'],
+                    'end_date' => $validated['end_date'] ?? null,
+                    'amount' => $validated['amount'] ?? null,
+                    'status' => $validated['status'],
+                    'notes' => $validated['notes'] ?? null,
                 ]);
 
-                AssistanceItem::where('id', $item['id'])
-                    ->decrement('quantity_in_stock', $item['quantity']);
-            }
+                /** 5️⃣ إعادة ربط العناصر والمتطوعين */
+                $project->items()->detach();
+                $project->volunteers()->detach();
 
-            if (!empty($validated['volunteers'])) {
-                foreach ($validated['volunteers'] as $vol) {
-                    $project->volunteers()->attach($vol['id'], [
-                        'position' => $vol['position'] ?? null
+                foreach ($validated['items'] as $item) {
+                    $project->items()->attach($item['id'], [
+                        'quantity' => $item['quantity']
                     ]);
-                }
-            }
-        });
 
-        return response()->json([
-            'message' => 'تم تحديث المشروع بنجاح',
-            'data' => $project->load(['items', 'volunteers'])
-        ], 200);
+                    AssistanceItem::where('id', $item['id'])
+                        ->decrement('quantity_in_stock', $item['quantity']);
+                }
+
+                if (!empty($validated['volunteers'])) {
+                    foreach ($validated['volunteers'] as $vol) {
+                        $project->volunteers()->attach($vol['id'], [
+                            'position' => $vol['position'] ?? null
+                        ]);
+                    }
+                }
+            });
+
+            return response()->json([
+                'message' => 'تم تحديث المشروع بنجاح',
+                'data' => $project->load(['items', 'volunteers'])
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'فشل تحديث المشروع',
+                'errors' => $e->errors()
+            ], 422);
+        }
     }
+
     public function destroy(Project $project)
     {
         if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
