@@ -47,7 +47,7 @@ class InventoryOutController extends Controller
         }
         $validated = $request->validate([
             'transaction_date' => 'required|date',
-            'orientation' => 'required|in:project,beneficiary,other',
+            'orientation_out' => 'required|in:project,beneficiary,other',
             'notes' => 'nullable|string',
 
             'project_id' => 'required_if:orientation,project|nullable|exists:projects,id',
@@ -63,7 +63,7 @@ class InventoryOutController extends Controller
             $transaction = InventoryTransaction::create([
                 'transaction_type' => 'out',
                 'transaction_date' => $validated['transaction_date'],
-                'orientation' => $validated['orientation'],
+                'orientation_out' => $validated['orientation_out'],
                 'notes' => $validated['notes'] ?? null,
                 'project_id' => $validated['project_id'] ?? null,
                 'beneficiary_id' => $validated['beneficiary_id'] ?? null,
@@ -94,26 +94,32 @@ class InventoryOutController extends Controller
         ], 201);
     }
 
-    public function show(InventoryTransaction $inventoryTransaction)
+    public function show($id)
     {
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
 
-        if ($inventoryTransaction->transaction_type != 'out') {
-            return response()->json([
-                'message' => 'هذه العملية ليست إخراج مخزون'
-            ], 400);
-        }
-
-        return response()->json([
-            'data' => $inventoryTransaction->load([
+        $inventoryTransaction = InventoryTransaction::where('id', $id)
+            ->where('transaction_type', 'out')
+            ->with([
                 'project:id,name',
                 'beneficiary:id,name',
                 'assistanceItems:id,name'
             ])
+            ->first();
+
+        if (! $inventoryTransaction) {
+            return response()->json([
+                'message' => 'عملية الإخراج غير موجودة'
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => $inventoryTransaction
         ], 200);
     }
+
 
     public function update(Request $request, InventoryTransaction $inventoryTransaction)
     {
@@ -124,7 +130,7 @@ class InventoryOutController extends Controller
 
         $validated = $request->validate([
             'transaction_date' => 'required|date',
-            'orientation' => 'required|in:project,beneficiary,other',
+            'orientation_out' => 'required|in:project,beneficiary,other',
             'notes' => 'nullable|string',
 
             'assistanceItems' => 'required|array|min:1',
@@ -148,7 +154,7 @@ class InventoryOutController extends Controller
             /** 3️⃣ تحديث بيانات المعاملة */
             $inventoryTransaction->update([
                 'transaction_date' => $validated['transaction_date'],
-                'orientation' => $validated['orientation'],
+                'orientation_out' => $validated['orientation_out'],
                 'notes' => $validated['notes'] ?? null,
                 'project_id' => $validated['project_id'] ?? null,
                 'beneficiary_id' => $validated['beneficiary_id'] ?? null,
@@ -182,22 +188,31 @@ class InventoryOutController extends Controller
     }
 
 
-    public function destroy(InventoryTransaction $inventoryTransaction)
+    public function destroy($id)
     {
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-        if ($inventoryTransaction->transaction_type !== 'out') {
+        $inventoryTransaction = InventoryTransaction::where('id', $id)
+            ->where('transaction_type', 'out')
+            ->with([
+                'project:id,name',
+                'beneficiary:id,name',
+                'assistanceItems:id,name'
+            ])
+            ->first();
+
+        if (! $inventoryTransaction) {
             return response()->json([
-                'message' => 'عملية غير صالحة'
-            ], 400);
+                'message' => 'عملية الإخراج غير موجودة'
+            ], 404);
         }
 
         DB::transaction(function () use ($inventoryTransaction) {
 
-            foreach ($inventoryTransaction->items as $item) {
+            foreach ($inventoryTransaction->assistanceItems as $item) {
                 AssistanceItem::where('id', $item->assistance_item_id)
-                    ->increment('quantity_in_stock', $item->quantity);
+                    ->increment('quantity_in_stock', (int)$item->quantity);
             }
 
             $inventoryTransaction->assistanceItems()->delete();

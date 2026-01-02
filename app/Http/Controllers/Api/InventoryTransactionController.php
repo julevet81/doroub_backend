@@ -63,7 +63,7 @@ class InventoryTransactionController extends Controller
             'transaction_date' => 'required|date',
             'orientation' => 'nullable|string',
             'notes' => 'nullable|string',
-
+            
             'assistanceItems' => 'required|array|min:1',
             'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
             'assistanceItems.*.quantity' => 'required|numeric|min:1',
@@ -120,6 +120,11 @@ class InventoryTransactionController extends Controller
         if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+        if ($inventoryTransaction->transaction_type != 'in') {
+            return response()->json([
+                'message' => 'هذه العملية ليست إدخال للمخزون'
+            ], 400);
+        }
         return response()->json([
             'data' => $inventoryTransaction->load([
                 'donor',
@@ -132,6 +137,11 @@ class InventoryTransactionController extends Controller
     {
         if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+        if ($inventoryTransaction->transaction_type != 'in') {
+            return response()->json([
+                'message' => 'هذه العملية ليست إدخال للمخزون'
+            ], 400);
         }
         $validated = $request->validate([
             'donor_id' => 'nullable|exists:donors,id',
@@ -152,6 +162,11 @@ class InventoryTransactionController extends Controller
     {
         if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+        if ($inventoryTransaction->transaction_type != 'in') {
+            return response()->json([
+                'message' => 'هذه العملية ليست إدخال للمخزون'
+            ], 400);
         }
         DB::transaction(function () use ($inventoryTransaction) {
 
