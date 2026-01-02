@@ -126,7 +126,11 @@ class InventoryOutController extends Controller
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-        abort_if($inventoryTransaction->transaction_type !== 'out', 404);
+        if (! $inventoryTransaction) {
+            return response()->json([
+                'message' => 'عملية الإخراج غير موجودة'
+            ], 404);
+        }
 
         $validated = $request->validate([
             'transaction_date' => 'required|date',
