@@ -13,7 +13,7 @@ class InventoryTransaction extends Model
     protected $fillable = [
         'transaction_type',
         'donor_id',
-        'orientation',
+        'orientation_out',
         'project_id',
         'transaction_date',
         'notes',
