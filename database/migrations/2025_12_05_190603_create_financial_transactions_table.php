@@ -15,9 +15,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('project_id')->nullable()->constrained()->onDelete('set null');
             $table->decimal('amount', 15, 2);
+            $table->foreignId('beneficiary_id')->nullable()->constrained()->onDelete('set null');
             $table->enum('transaction_type', ['income', 'expense']);
             $table->foreignId('donor_id')->nullable()->constrained()->onDelete('set null');
-            $table->enum('orientation', ['project', 'family'])->nullable();
+            $table->enum('orientation', ['project', 'treasury'])->nullable();
             $table->enum('out_orientation', ['project', 'sponsored_family', 'services', 'electricity', 'maintenance', 'internet', 'cleaning', 'generals'])->nullable();
             $table->enum('payment_method', ['cash', 'bank_transfer', 'credit_card', 'other'])->nullable();
             $table->decimal('previous_balance', 15, 2)->nullable();

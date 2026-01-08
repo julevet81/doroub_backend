@@ -13,6 +13,8 @@ class FinancialTransaction extends Model
         'amount',
         'transaction_type',
         'donor_id',
+        'beneficiary_id',
+        'project_id',
         'orientation',
         'out_orientation',
         'payment_method',
