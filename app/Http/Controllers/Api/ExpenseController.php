@@ -125,7 +125,7 @@ class ExpenseController extends Controller
         ], 200);
     }
 
-    
+
 
     public function store(Request $request)
     {
@@ -175,6 +175,7 @@ class ExpenseController extends Controller
                 $data['beneficiary_id'] = $validated['beneficiary_id'];
             }
 
+            // 🔹 حفظ الفاتورة (إذا وجدت)
             if ($request->hasFile('attachment')) {
                 $data['attachment'] = $request->file('attachment')->store('attachments', 'public');
             }
@@ -188,6 +189,7 @@ class ExpenseController extends Controller
             ], 201);
         });
     }
+
 
 
     public function show($id)
@@ -210,7 +212,6 @@ class ExpenseController extends Controller
 
         $expense = FinancialTransaction::findOrFail($id);
 
-        // تأكد أنه مصروف
         if ($expense->transaction_type !== 'expense') {
             return response()->json([
                 'message' => 'لا يمكن تعديل عملية ليست مصروفًا'
@@ -224,17 +225,15 @@ class ExpenseController extends Controller
             'notes' => 'nullable|string|max:1000',
             'project_id' => 'nullable|exists:projects,id',
             'beneficiary_id' => 'nullable|exists:beneficiaries,id',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4096',
         ]);
 
-        return DB::transaction(function () use ($expense, $validated) {
+        return DB::transaction(function () use ($expense, $validated, $request) {
 
-            // 🔹 الرصيد الحالي للخزينة
             $currentBalance = FinancialTransaction::latest()->value('new_balance') ?? 0;
 
-            // 🔹 إعادة المبلغ القديم مؤقتًا
             $restoredBalance = $currentBalance + $expense->amount;
 
-            // 🔹 التحقق من كفاية الرصيد للمبلغ الجديد
             if ($validated['amount'] > $restoredBalance) {
                 return response()->json([
                     'message' => 'رصيد الخزينة غير كافٍ بعد التعديل',
@@ -242,11 +241,9 @@ class ExpenseController extends Controller
                 ], 422);
             }
 
-            // 🔹 حساب الرصيد الجديد
             $newBalance = $restoredBalance - $validated['amount'];
 
-            // 🔹 تحديث المصروف
-            $expense->update([
+            $updateData = [
                 'amount'            => $validated['amount'],
                 'out_orientation'   => $validated['out_orientation'] ?? $expense->out_orientation,
                 'transaction_date'  => $validated['transaction_date'],
@@ -255,7 +252,21 @@ class ExpenseController extends Controller
                 'beneficiary_id'    => $validated['beneficiary_id'] ?? null,
                 'previous_balance'  => $restoredBalance,
                 'new_balance'       => $newBalance,
-            ]);
+            ];
+
+            // 🔹 إن تمت إضافة مرفق جديد
+            if ($request->hasFile('attachment')) {
+
+                // حذف القديم إذا موجود
+                if ($expense->attachment && Storage::disk('public')->exists($expense->attachment)) {
+                    Storage::disk('public')->delete($expense->attachment);
+                }
+
+                // رفع الجديد
+                $updateData['attachment'] = $request->file('attachment')->store('attachments', 'public');
+            }
+
+            $expense->update($updateData);
 
             return response()->json([
                 'message' => 'تم تحديث المصروف بنجاح',
@@ -264,6 +275,7 @@ class ExpenseController extends Controller
             ], 200);
         });
     }
+
 
 
     public function destroy($id)

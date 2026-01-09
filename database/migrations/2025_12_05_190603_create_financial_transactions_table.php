@@ -21,6 +21,7 @@ return new class extends Migration
             $table->enum('orientation', ['project', 'treasury'])->nullable();
             $table->enum('out_orientation', ['project', 'sponsored_family', 'services', 'electricity', 'maintenance', 'internet', 'cleaning', 'generals'])->nullable();
             $table->enum('payment_method', ['cash', 'bank_transfer', 'credit_card', 'other'])->nullable();
+            $table->string('attachment')->nullable();
             $table->decimal('previous_balance', 15, 2)->nullable();
             $table->decimal('new_balance', 15, 2)->nullable();
             $table->text('description')->nullable();
