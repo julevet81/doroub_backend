@@ -73,15 +73,19 @@ class ProjectController extends Controller
                     'notes' => $validated['notes'] ?? null,
                 ]);
 
+                // 🔹 ربط العناصر مع تحديد rest_in_project = quantity
                 foreach ($validated['items'] as $item) {
                     $project->items()->attach($item['id'], [
-                        'quantity' => $item['quantity']
+                        'quantity' => $item['quantity'],
+                        'rest_in_project' => $item['quantity'], // 👈 القيمة الجديدة
                     ]);
 
+                    // 🔹 تنزيل الكمية من المخزون
                     AssistanceItem::where('id', $item['id'])
                         ->decrement('quantity_in_stock', $item['quantity']);
                 }
 
+                // 🔹 ربط المتطوعين إن وجدوا
                 if (!empty($validated['volunteers'])) {
                     foreach ($validated['volunteers'] as $vol) {
                         $project->volunteers()->attach($vol['id'], [
@@ -104,6 +108,7 @@ class ProjectController extends Controller
             ], 422);
         }
     }
+
 
 
     public function show(Project $project)
@@ -143,10 +148,10 @@ class ProjectController extends Controller
         try {
             DB::transaction(function () use ($validated, $project) {
 
-                /** 1️⃣ حفظ الكميات القديمة */
-                $oldItems = $project->items()->withPivot('quantity')->get();
+                /** 1️⃣ جلب الكميات القديمة مع rest_in_project */
+                $oldItems = $project->items()->withPivot('quantity', 'rest_in_project')->get();
 
-                /** 2️⃣ إرجاع الكميات القديمة إلى المخزن */
+                /** 2️⃣ إرجاع الكميات القديمة للمخزون */
                 foreach ($oldItems as $old) {
                     AssistanceItem::where('id', $old->id)
                         ->increment('quantity_in_stock', $old->pivot->quantity);
@@ -174,19 +179,22 @@ class ProjectController extends Controller
                     'notes' => $validated['notes'] ?? null,
                 ]);
 
-                /** 5️⃣ إعادة ربط العناصر والمتطوعين */
+                /** 5️⃣ فصل العناصر والمتطوعين */
                 $project->items()->detach();
                 $project->volunteers()->detach();
 
+                /** 6️⃣ ربط العناصر من جديد مع rest_in_project */
                 foreach ($validated['items'] as $item) {
                     $project->items()->attach($item['id'], [
-                        'quantity' => $item['quantity']
+                        'quantity' => $item['quantity'],
+                        'rest_in_project' => $item['quantity'], // 👈 تحديث القيمة الجديدة
                     ]);
 
                     AssistanceItem::where('id', $item['id'])
                         ->decrement('quantity_in_stock', $item['quantity']);
                 }
 
+                /** 7️⃣ ربط المتطوعين */
                 if (!empty($validated['volunteers'])) {
                     foreach ($validated['volunteers'] as $vol) {
                         $project->volunteers()->attach($vol['id'], [
@@ -207,6 +215,7 @@ class ProjectController extends Controller
             ], 422);
         }
     }
+
 
     public function destroy(Project $project)
     {

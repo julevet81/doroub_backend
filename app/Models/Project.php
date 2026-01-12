@@ -24,7 +24,7 @@ class Project extends Model
     public function items()
     {
         return $this->belongsToMany(AssistanceItem::class, 'project_assistances')
-            ->withPivot('quantity')
+            ->withPivot('quantity', 'rest_in_project')
             ->withTimestamps();
     }
 

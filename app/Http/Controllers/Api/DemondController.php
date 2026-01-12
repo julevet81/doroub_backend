@@ -20,7 +20,7 @@ class DemondController extends Controller
         if (!Auth::user() || !Auth::user()->can('الطلبات')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-        $demonds = Demond::with(['beneficiary', 'assistanceItems'])->paginate(20);
+        $demonds = Demond::with(['beneficiary', 'items'])->paginate(20);
 
         return response()->json([
             'data' => $demonds
@@ -35,9 +35,8 @@ class DemondController extends Controller
         $validated = $request->validate([
             'beneficiary_id' => 'required|exists:beneficiaries,id',
             'demand_date' => 'required|date',
-            'attachement' => 'nullable|file|max:2048',
+            'attachement' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
             'description' => 'nullable|string',
-
             'items' => 'required|array|min:1',
             'items.*.assistance_item_id' => 'required|exists:assistance_items,id',
             'items.*.quantity' => 'required|integer|min:1',

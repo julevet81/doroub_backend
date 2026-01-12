@@ -12,6 +12,7 @@ class ProjectAssistance extends Model
         'project_id',
         'assistance_item_id',
         'quantity',
+        'rest_in_project',
     ];
 
     public function project()

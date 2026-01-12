@@ -134,7 +134,7 @@ class FinancialTransactionController extends Controller
         }
 
         $validated = $request->validate([
-            'orientation' => 'required|string|in:project,family,other', // نوع الإيراد
+            'orientation' => 'required|string|in:project,treasury,other', // نوع الإيراد
             'transaction_date' => 'required|date',
             'amount' => 'required|numeric|min:0',
             'donor_id' => 'nullable|exists:donors,id',

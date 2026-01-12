@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('assistance_item_id')->constrained('assistance_items')->cascadeOnDelete();
             $table->foreignId('project_id')->constrained('projects')->cascadeOnDelete();
-
+            $table->integer('rest_in_project')->nullable();
             $table->integer('quantity');
             $table->timestamps();
         });

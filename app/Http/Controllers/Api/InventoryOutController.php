@@ -17,11 +17,11 @@ class InventoryOutController extends Controller
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         $transactions = InventoryTransaction::query()
             ->where('transaction_type', 'out')
-            ->select('id', 'orientation_out', 'transaction_date')
             ->orderByDesc('transaction_date')
-            ->get();
+            ->get(['id', 'orientation_out', 'transaction_date']);
 
         $stats = [
             'to_projects' => InventoryTransaction::where('transaction_type', 'out')
@@ -38,6 +38,7 @@ class InventoryOutController extends Controller
             'statistics' => $stats
         ], 200);
     }
+
 
 
     public function store(Request $request)
