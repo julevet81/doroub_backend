@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->enum('type', ['relief', 'solidarity', 'healthyh', 'educational', 'entertainment', 'awareness', 'celebration']);
             $table->decimal('budget', 15, 2);
-            $table->decimal('remaining_amount', 15, 2)->nullable();
+            $table->decimal('remaining_amount', 15, 2);
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->enum('status', ['planned', 'in_progress', 'completed', 'rejected'])->nullable();
