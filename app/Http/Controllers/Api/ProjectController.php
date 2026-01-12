@@ -52,7 +52,7 @@ class ProjectController extends Controller
         try {
             $project = DB::transaction(function () use ($validated) {
 
-                // 🔹 التحقق من الكميات قبل إنشاء المشروع
+                // ⛔ فحص توفر الكميات
                 foreach ($validated['items'] as $item) {
                     $assistanceItem = AssistanceItem::lockForUpdate()->find($item['id']);
 
@@ -63,6 +63,7 @@ class ProjectController extends Controller
                     }
                 }
 
+                // إنشاء المشروع
                 $project = Project::create([
                     'name' => $validated['name'],
                     'type' => $validated['type'],
@@ -73,19 +74,18 @@ class ProjectController extends Controller
                     'notes' => $validated['notes'] ?? null,
                 ]);
 
-                // 🔹 ربط العناصر مع تحديد rest_in_project = quantity
+                // ربط العناصر
                 foreach ($validated['items'] as $item) {
                     $project->items()->attach($item['id'], [
-                        'quantity' => $item['quantity'],
-                        'rest_in_project' => $item['quantity'], // 👈 القيمة الجديدة
+                        'quantity' => $item['quantity'],      // محجوزة
+                        'rest_in_project' => $item['quantity'] // متبقية مبدئياً
                     ]);
 
-                    // 🔹 تنزيل الكمية من المخزون
                     AssistanceItem::where('id', $item['id'])
                         ->decrement('quantity_in_stock', $item['quantity']);
                 }
 
-                // 🔹 ربط المتطوعين إن وجدوا
+                // ربط المتطوعين
                 if (!empty($validated['volunteers'])) {
                     foreach ($validated['volunteers'] as $vol) {
                         $project->volunteers()->attach($vol['id'], [
@@ -108,6 +108,7 @@ class ProjectController extends Controller
             ], 422);
         }
     }
+
 
 
 
@@ -148,16 +149,16 @@ class ProjectController extends Controller
         try {
             DB::transaction(function () use ($validated, $project) {
 
-                /** 1️⃣ جلب الكميات القديمة مع rest_in_project */
+                // جلب القديم
                 $oldItems = $project->items()->withPivot('quantity', 'rest_in_project')->get();
 
-                /** 2️⃣ إرجاع الكميات القديمة للمخزون */
+                // إرجاع الكميات القديمة
                 foreach ($oldItems as $old) {
                     AssistanceItem::where('id', $old->id)
                         ->increment('quantity_in_stock', $old->pivot->quantity);
                 }
 
-                /** 3️⃣ التحقق من توفر الكميات الجديدة */
+                // فحص الكميات الجديدة
                 foreach ($validated['items'] as $item) {
                     $assistanceItem = AssistanceItem::lockForUpdate()->find($item['id']);
 
@@ -168,7 +169,7 @@ class ProjectController extends Controller
                     }
                 }
 
-                /** 4️⃣ تحديث بيانات المشروع */
+                // تحديث بيانات المشروع
                 $project->update([
                     'name' => $validated['name'],
                     'type' => $validated['type'],
@@ -179,22 +180,42 @@ class ProjectController extends Controller
                     'notes' => $validated['notes'] ?? null,
                 ]);
 
-                /** 5️⃣ فصل العناصر والمتطوعين */
+                // فصل القديم
                 $project->items()->detach();
                 $project->volunteers()->detach();
 
-                /** 6️⃣ ربط العناصر من جديد مع rest_in_project */
+                // ربط الجديد مع الحفاظ على منطق rest_in_project
                 foreach ($validated['items'] as $item) {
+
+                    $old = $oldItems->firstWhere('id', $item['id']);
+                    $newQuantity = $item['quantity'];
+
+                    if ($old) {
+                        $oldQuantity = $old->pivot->quantity;
+                        $oldRest = $old->pivot->rest_in_project;
+
+                        if ($newQuantity == $oldQuantity) {
+                            $rest = $oldRest;
+                        } elseif ($newQuantity > $oldQuantity) {
+                            $increase = $newQuantity - $oldQuantity;
+                            $rest = min($oldRest + $increase, $newQuantity);
+                        } else {
+                            $rest = min($oldRest, $newQuantity);
+                        }
+                    } else {
+                        $rest = $newQuantity;
+                    }
+
                     $project->items()->attach($item['id'], [
-                        'quantity' => $item['quantity'],
-                        'rest_in_project' => $item['quantity'], // 👈 تحديث القيمة الجديدة
+                        'quantity' => $newQuantity,
+                        'rest_in_project' => $rest,
                     ]);
 
                     AssistanceItem::where('id', $item['id'])
-                        ->decrement('quantity_in_stock', $item['quantity']);
+                        ->decrement('quantity_in_stock', $newQuantity);
                 }
 
-                /** 7️⃣ ربط المتطوعين */
+                // ربط المتطوعين
                 if (!empty($validated['volunteers'])) {
                     foreach ($validated['volunteers'] as $vol) {
                         $project->volunteers()->attach($vol['id'], [
@@ -215,6 +236,7 @@ class ProjectController extends Controller
             ], 422);
         }
     }
+
 
 
     public function destroy(Project $project)
