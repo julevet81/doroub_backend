@@ -13,6 +13,7 @@ class Demond extends Model
         'beneficiary_id',
         'demand_date',
         'treated_by',
+        'status',
         'attachement',
         'description',
     ];

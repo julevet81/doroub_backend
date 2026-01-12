@@ -35,6 +35,7 @@ class DemondController extends Controller
         $validated = $request->validate([
             'beneficiary_id' => 'required|exists:beneficiaries,id',
             'demand_date' => 'required|date',
+            'status' => 'in:pending,accepted,approved,rejected',
             'attachement' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
             'description' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -95,6 +96,7 @@ class DemondController extends Controller
                 'id' => $demond->id,
                 'beneficiary' => $demond->beneficiary,
                 'demand_date' => $demond->demand_date,
+                'status' => $demond->status,
                 'description' => $demond->description,
                 'attachement_url' => $demond->attachement
                     ? asset('storage/' . $demond->attachement)
@@ -124,6 +126,7 @@ class DemondController extends Controller
         $validated = $request->validate([
             'beneficiary_id' => 'sometimes|exists:beneficiaries,id',
             'demand_date' => 'sometimes|date',
+            'status' => 'sometimes|in:pending,accepted,approved,rejected',
             'attachement' => 'nullable|file|max:2048',
             'description' => 'nullable|string',
 
