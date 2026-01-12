@@ -27,90 +27,59 @@ class ProjectController extends Controller
 
     public function store(Request $request)
     {
-        if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
-            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
-        }
-
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|string',
+            'name' => 'required|string',
+            'type' => 'required|string|in:social,economic,health,education,other',
+            'budget' => 'required|numeric|min:0',
             'start_date' => 'required|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'budget' => 'nullable|numeric',
-            'status' => 'required|string',
-            'notes' => 'nullable|string',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'status' => 'required|string|in:planned,ongoing,completed,canceled',
+            'location' => 'nullable|string',
+            'description' => 'nullable|string',
 
-            'items' => 'required|array',
-            'items.*.id' => 'required|exists:assistance_items,id',
+            'items' => 'nullable|array',
+            'items.*.id' => 'required|integer|exists:assistance_items,id',
             'items.*.quantity' => 'required|integer|min:1',
-
-            'volunteers' => 'nullable|array',
-            'volunteers.*.id' => 'required|exists:volunteers,id',
-            'volunteers.*.position' => 'nullable|string|max:255',
         ]);
 
+        DB::beginTransaction();
+
         try {
-            $project = DB::transaction(function () use ($validated) {
+            $project = Project::create([
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'budget' => $validated['budget'],
+                'remaining_amount' => $validated['budget'], // المبلغ المتبقي = الميزانية
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
+                'status' => $validated['status'],
+                'location' => $validated['location'] ?? null,
+                'description' => $validated['description'] ?? null,
+            ]);
 
-                // ⛔ فحص توفر الكميات
-                foreach ($validated['items'] as $item) {
-                    $assistanceItem = AssistanceItem::lockForUpdate()->find($item['id']);
-
-                    if ($item['quantity'] > $assistanceItem->quantity_in_stock) {
-                        throw ValidationException::withMessages([
-                            'items' => "الكمية غير كافية للعنصر: {$assistanceItem->name}"
-                        ]);
-                    }
-                }
-
-                // إنشاء المشروع
-                $project = Project::create([
-                    'name' => $validated['name'],
-                    'type' => $validated['type'],
-                    'start_date' => $validated['start_date'],
-                    'end_date' => $validated['end_date'] ?? null,
-                    'budget' => $validated['budget'] ?? null,
-                    'status' => $validated['status'],
-                    'notes' => $validated['notes'] ?? null,
-                ]);
-
-                // ربط العناصر
+            if (!empty($validated['items'])) {
                 foreach ($validated['items'] as $item) {
                     $project->items()->attach($item['id'], [
-                        'quantity' => $item['quantity'],      // محجوزة
-                        'rest_in_project' => $item['quantity'] // متبقية مبدئياً
+                        'quantity' => $item['quantity'],       // الكمية المحجوزة
+                        'rest_in_project' => $item['quantity'] // المتبقي يبدأ بنفس القيمة
                     ]);
-
-                    AssistanceItem::where('id', $item['id'])
-                        ->decrement('quantity_in_stock', $item['quantity']);
                 }
+            }
 
-                // ربط المتطوعين
-                if (!empty($validated['volunteers'])) {
-                    foreach ($validated['volunteers'] as $vol) {
-                        $project->volunteers()->attach($vol['id'], [
-                            'position' => $vol['position'] ?? null
-                        ]);
-                    }
-                }
-
-                return $project;
-            });
+            DB::commit();
 
             return response()->json([
                 'message' => 'تم إنشاء المشروع بنجاح',
-                'data' => $project->load(['items', 'volunteers'])
+                'data' => $project->load('items')
             ], 201);
-        } catch (ValidationException $e) {
+        } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'message' => 'فشل إنشاء المشروع',
-                'errors' => $e->errors()
-            ], 422);
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
-
-
-
 
     public function show(Project $project)
     {
@@ -122,123 +91,85 @@ class ProjectController extends Controller
         ], 200);
     }
 
-    public function update(Request $request, Project $project)
+    public function update(Request $request, $id)
     {
-        if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
-            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
-        }
-
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|string',
-            'start_date' => 'required|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'amount' => 'nullable|numeric',
-            'status' => 'required|string',
-            'notes' => 'nullable|string',
+            'name' => 'nullable|string',
+            'type' => 'nullable|string|in:social,economic,health,education,other',
+            'budget' => 'nullable|numeric|min:0',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+            'status' => 'nullable|string|in:planned,ongoing,completed,canceled',
+            'location' => 'nullable|string',
+            'description' => 'nullable|string',
 
-            'items' => 'required|array',
-            'items.*.id' => 'required|exists:assistance_items,id',
+            'items' => 'nullable|array',
+            'items.*.id' => 'required|integer|exists:assistance_items,id',
             'items.*.quantity' => 'required|integer|min:1',
-
-            'volunteers' => 'nullable|array',
-            'volunteers.*.id' => 'required|exists:volunteers,id',
-            'volunteers.*.position' => 'nullable|string|max:255',
         ]);
 
+        DB::beginTransaction();
+
         try {
-            DB::transaction(function () use ($validated, $project) {
+            $project = Project::findOrFail($id);
 
-                // جلب القديم
-                $oldItems = $project->items()->withPivot('quantity', 'rest_in_project')->get();
+            // تحديث ميزانية المشروع مع الحفاظ على remaining_amount الحالي
+            if (isset($validated['budget'])) {
+                $difference = $validated['budget'] - $project->budget;
 
-                // إرجاع الكميات القديمة
-                foreach ($oldItems as $old) {
-                    AssistanceItem::where('id', $old->id)
-                        ->increment('quantity_in_stock', $old->pivot->quantity);
-                }
-
-                // فحص الكميات الجديدة
-                foreach ($validated['items'] as $item) {
-                    $assistanceItem = AssistanceItem::lockForUpdate()->find($item['id']);
-
-                    if ($item['quantity'] > $assistanceItem->quantity_in_stock) {
-                        throw ValidationException::withMessages([
-                            'items' => "الكمية غير كافية للعنصر {$assistanceItem->name} (المتاح: {$assistanceItem->quantity_in_stock})"
-                        ]);
+                // إذا زادت الميزانية -> نزيد remaining_amount
+                if ($difference > 0) {
+                    $project->remaining_amount += $difference;
+                } else {
+                    // إذا نقصت الميزانية -> لازم remaining_amount >= |difference|
+                    if ($project->remaining_amount < abs($difference)) {
+                        throw new \Exception("لا يمكن تخفيض الميزانية لأن remaining_amount لا يسمح بذلك");
                     }
+                    $project->remaining_amount += $difference;
                 }
+            }
 
-                // تحديث بيانات المشروع
-                $project->update([
-                    'name' => $validated['name'],
-                    'type' => $validated['type'],
-                    'start_date' => $validated['start_date'],
-                    'end_date' => $validated['end_date'] ?? null,
-                    'amount' => $validated['amount'] ?? null,
-                    'status' => $validated['status'],
-                    'notes' => $validated['notes'] ?? null,
-                ]);
+            $project->update($validated);
 
-                // فصل القديم
-                $project->items()->detach();
-                $project->volunteers()->detach();
-
-                // ربط الجديد مع الحفاظ على منطق rest_in_project
+            // تحديث المواد
+            if (!empty($validated['items'])) {
                 foreach ($validated['items'] as $item) {
+                    $existing = $project->items()->where('assistance_item_id', $item['id'])->first();
 
-                    $old = $oldItems->firstWhere('id', $item['id']);
-                    $newQuantity = $item['quantity'];
-
-                    if ($old) {
-                        $oldQuantity = $old->pivot->quantity;
-                        $oldRest = $old->pivot->rest_in_project;
-
-                        if ($newQuantity == $oldQuantity) {
-                            $rest = $oldRest;
-                        } elseif ($newQuantity > $oldQuantity) {
-                            $increase = $newQuantity - $oldQuantity;
-                            $rest = min($oldRest + $increase, $newQuantity);
-                        } else {
-                            $rest = min($oldRest, $newQuantity);
+                    if ($existing) {
+                        // تحديث الكمية المحجوزة مع التأكد أن rest_in_project لا تتجاوزها
+                        if ($existing->pivot->rest_in_project > $item['quantity']) {
+                            throw new \Exception("لا يمكن وضع كمية أقل من rest_in_project الحالية");
                         }
+
+                        $project->items()->updateExistingPivot($item['id'], [
+                            'quantity' => $item['quantity'],
+                        ]);
                     } else {
-                        $rest = $newQuantity;
-                    }
-
-                    $project->items()->attach($item['id'], [
-                        'quantity' => $newQuantity,
-                        'rest_in_project' => $rest,
-                    ]);
-
-                    AssistanceItem::where('id', $item['id'])
-                        ->decrement('quantity_in_stock', $newQuantity);
-                }
-
-                // ربط المتطوعين
-                if (!empty($validated['volunteers'])) {
-                    foreach ($validated['volunteers'] as $vol) {
-                        $project->volunteers()->attach($vol['id'], [
-                            'position' => $vol['position'] ?? null
+                        // إضافة مادة جديدة
+                        $project->items()->attach($item['id'], [
+                            'quantity' => $item['quantity'],
+                            'rest_in_project' => $item['quantity']
                         ]);
                     }
                 }
-            });
+            }
+
+            DB::commit();
 
             return response()->json([
-                'message' => 'تم تحديث المشروع بنجاح',
-                'data' => $project->load(['items', 'volunteers'])
+                'message' => 'تم تعديل المشروع بنجاح',
+                'data' => $project->load('items')
             ], 200);
-        } catch (ValidationException $e) {
+        } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
-                'message' => 'فشل تحديث المشروع',
-                'errors' => $e->errors()
-            ], 422);
+                'message' => 'فشل تعديل المشروع',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
-
-
-
+    
     public function destroy(Project $project)
     {
         if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {

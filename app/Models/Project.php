@@ -14,6 +14,7 @@ class Project extends Model
         'name',
         'type',
         'budget',
+        'remaining_amount',
         'start_date',
         'end_date',
         'status',
