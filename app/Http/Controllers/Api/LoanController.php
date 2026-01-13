@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Auth;
 
 class LoanController extends Controller
 {
-    // عرض جميع الإعارات
     public function index()
     {
         if (!Auth::user() || !Auth::user()->can('الإعارات')) {
@@ -26,17 +25,20 @@ class LoanController extends Controller
             'data' => $loans
         ], 200);
     }
+
     public function store(Request $request)
     {
         if (!Auth::user() || !Auth::user()->can('الإعارات')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         $request->validate([
             'device_id' => 'required|exists:devices,id',
             'loan_date' => 'required|date',
             'new_beneficiary' => 'nullable|boolean',
         ]);
 
+        // معالجة المستفيد
         if ($request->new_beneficiary == 1) {
             $beneficiary = Beneficiary::create([
                 'beneficiary_category_id' => $request->beneficiary_category_id,
@@ -66,6 +68,10 @@ class LoanController extends Controller
             'notes' => $request->notes,
         ]);
 
+        // === تعديل حالة الجهاز إلى "معار" ===
+        $device = Device::find($request->device_id);
+        $device->update(['status' => 1]);
+
         return response()->json([
             'message' => 'تم تسجيل الإعارة بنجاح',
             'data' => $loan
@@ -90,12 +96,15 @@ class LoanController extends Controller
         if (!Auth::user() || !Auth::user()->can('الإعارات')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         $loan = Loan::findOrFail($id);
 
         $request->validate([
             'device_id' => 'required|exists:devices,id',
             'loan_date' => 'required|date',
         ]);
+
+        $oldDeviceId = $loan->device_id;
 
         // إذا كان المستفيد جديد
         if ($request->beneficiary_type == 'new') {
@@ -142,6 +151,12 @@ class LoanController extends Controller
             'notes' => $request->notes,
         ]);
 
+        // === تعديل حالات الأجهزة عند تغيير الجهاز ===
+        if ($oldDeviceId != $request->device_id) {
+            Device::find($oldDeviceId)->update(['status' => 0]); // الجهاز القديم متوفر
+            Device::find($request->device_id)->update(['status' => 1]); // الجهاز الجديد معار
+        }
+
         return response()->json([
             'message' => 'تم تعديل الإعارة بنجاح',
             'data' => $loan
@@ -153,7 +168,12 @@ class LoanController extends Controller
         if (!Auth::user() || !Auth::user()->can('الإعارات')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         $loan = Loan::findOrFail($id);
+
+        // يمكن هنا إعادة حالة الجهاز إلى "متوفر" إذا أردت
+        // Device::find($loan->device_id)->update(['status' => 0]);
+
         $loan->delete();
 
         return response()->json([
