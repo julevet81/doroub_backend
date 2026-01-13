@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\Auth\{
     EmailVerificationController
 };
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\BeneficeController as ControllersBeneficeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -103,7 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('children', ChildController::class);
 
     ############################## المالية ##############################
-    Route::get('financial-transactions/statistics', [FinancialTransactionController::class, 'statistics']);
+    Route::post('financial-transactions/statistics', [FinancialTransactionController::class, 'statistics']);
     Route::apiResource('financial-transactions', FinancialTransactionController::class);
 
     ############################## النفقات ##############################

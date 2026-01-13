@@ -23,19 +23,26 @@ class AssistanceItem extends Model
     public function inventoryTransactions()
     {
         return $this->belongsToMany(InventoryTransaction::class, 'transaction_items')
-                    ->withPivot('quantity')
-                    ->withTimestamps();
+            ->withPivot('quantity')
+            ->withTimestamps();
     }
 
     public function projects()
     {
         return $this->belongsToMany(Project::class, 'project_assistances')
-            ->withPivot('quantity');
+            ->withPivot('quantity', 'rest_in_project');
     }
 
     public function demonds()
     {
-        return $this->belongsToMany(Demond::class, 'project_assistances')
+        return $this->belongsToMany(Demond::class, 'demonded_items')
+            ->withPivot('quantity')
+            ->withTimestamps();
+    }
+
+    public function benefices()
+    {
+        return $this->belongsToMany(Benefice::class, 'benefice_items')
             ->withPivot('quantity')
             ->withTimestamps();
     }

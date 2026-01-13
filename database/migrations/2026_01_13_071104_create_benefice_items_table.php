@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('benefices', function (Blueprint $table) {
+        Schema::create('benefice_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('beneficiary_id')->constrained()->onDelete('cascade');
-            $table->enum('type', ['financial', 'material']);
-            $table->decimal('amount', 15, 2)->nullable();
+            $table->foreignId('benefice_id')->constrained()->onDelete('cascade');
+            $table->foreignId('assistance_item_id')->constrained()->onDelete('cascade');
+            $table->integer('quantity')->default(1);
             $table->timestamps();
         });
     }
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('benefices');
+        Schema::dropIfExists('benefice_items');
     }
 };
