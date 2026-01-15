@@ -15,6 +15,7 @@ class InventoryTransaction extends Model
         'donor_id',
         'orientation_out',
         'project_id',
+        'beneficiary_id',
         'transaction_date',
         'notes',
     ];

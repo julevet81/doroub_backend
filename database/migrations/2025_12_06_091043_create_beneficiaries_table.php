@@ -20,14 +20,14 @@ return new class extends Migration
             $table->string('address')->nullable();
             $table->string('phone_1')->nullable();
             $table->string('phone_2')->nullable();
-            $table->enum('social_status', ['maried', 'single', 'divorced', 'widowed'])->default('single');
+            $table->enum('social_status', ['maried', 'single', 'divorced', 'widowed', 'cancer_patient'])->default('maried');
             $table->enum('gender', ['male', 'female']);
             $table->integer('nbr_in_family')->nullable();
             $table->foreignId('partner_id')->nullable()->constrained('partner_infos')->onDelete('cascade');
             $table->integer('nbr_studing')->default(0);
             $table->string('job')->nullable();
             $table->boolean('insured')->default(false);
-            $table->enum('study_level', ['none', 'primary', 'secondary', 'higher'])->nullable();
+            $table->enum('study_level', ['none', 'primary', 'intermediate', 'secondary', 'higher'])->nullable();
             $table->string('health_status')->nullable();
             $table->string('income_source')->nullable();
             $table->string('barcode')->unique();
