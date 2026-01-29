@@ -15,10 +15,12 @@ class InventoryOutController extends Controller
     public function index()
     {
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
-            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+            return response()->json([
+                'message' => 'غير مسموح لك بهذا الاجراء'
+            ], 403);
         }
 
-        // جلب العمليات + العلاقات
+        // جلب العمليات الخارجة من المخزون مع العلاقات
         $transactions = InventoryTransaction::where('transaction_type', 'out')
             ->with([
                 'assistanceItems:id,name',
@@ -26,24 +28,25 @@ class InventoryOutController extends Controller
                 'beneficiary:id,full_name'
             ])
             ->orderByDesc('transaction_date')
-            ->get();
+            ->get(['id', 'orientation_out', 'transaction_date']);
 
-        // احصائيات حسب الاتجاه
-        $stats = [
-            'to_projects' => InventoryTransaction::where('transaction_type', 'out')
+        // احصائيات حسب جهة الخروج (من نفس البيانات)
+        $statistics = [
+            'to_projects' => $transactions
                 ->where('orientation_out', 'project')
                 ->count(),
 
-            'to_beneficiaries' => InventoryTransaction::where('transaction_type', 'out')
+            'to_beneficiaries' => $transactions
                 ->where('orientation_out', 'beneficiary')
                 ->count(),
         ];
 
         return response()->json([
             'data' => $transactions,
-            'statistics' => $stats
+            'statistics' => $statistics
         ], 200);
     }
+
 
 
 
@@ -58,8 +61,8 @@ class InventoryOutController extends Controller
             'orientation_out' => 'required|in:project,beneficiary,other',
             'notes' => 'nullable|string',
 
-            'project_id' => 'required_if:orientation,project|nullable|exists:projects,id',
-            'beneficiary_id' => 'required_if:orientation,beneficiary|nullable|exists:beneficiaries,id',
+            'project_id' => 'required_if:orientation_out,project|nullable|exists:projects,id',
+            'beneficiary_id' => 'required_if:orientation_out,beneficiary|nullable|exists:beneficiaries,id',
 
             'assistanceItems' => 'required|array|min:1',
             'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
@@ -149,8 +152,11 @@ class InventoryOutController extends Controller
         }
 
         $validated = $request->validate([
+
             'transaction_date' => 'required|date',
             'orientation_out' => 'required|in:project,beneficiary,other',
+            'project_id' => 'required_if:orientation_out,project|nullable|exists:projects,id',
+            'beneficiary_id' => 'required_if:orientation_out,beneficiary|nullable|exists:beneficiaries,id',
             'notes' => 'nullable|string',
 
             'assistanceItems' => 'required|array|min:1',
