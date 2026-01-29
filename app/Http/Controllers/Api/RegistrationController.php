@@ -50,7 +50,7 @@ class RegistrationController extends Controller
         }
         $validated = $request->validate([
             'beneficiary_id' => 'required|exists:beneficiaries,id',
-            'status' => 'required|in:accepted,in_study,rejected',
+            'status' => 'required|in:accepted,pending,rejected',
             'notes' => 'nullable|string',
         ]);
 

@@ -27,7 +27,7 @@ class DeviceController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'serial_number' => 'required|string|unique:devices',
-            'is_new' => 'required|boolean',
+            'is_new' => 'nullable|boolean',
         ]);
 
         $validated['barcode'] = mt_rand(100000000000, 999999999999);

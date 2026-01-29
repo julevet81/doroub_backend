@@ -18,8 +18,8 @@ class InventoryOutController extends Controller
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
 
-        $transactions = InventoryTransaction::query()
-            ->where('transaction_type', 'out')
+        // جلب العمليات + العلاقات
+        $transactions = InventoryTransaction::where('transaction_type', 'out')
             ->with([
                 'assistanceItems:id,name',
                 'project:id,name',
@@ -28,13 +28,14 @@ class InventoryOutController extends Controller
             ->orderByDesc('transaction_date')
             ->get();
 
+        // احصائيات حسب الاتجاه
         $stats = [
             'to_projects' => InventoryTransaction::where('transaction_type', 'out')
-                ->whereNotNull('project_id')
+                ->where('orientation_out', 'project')
                 ->count(),
 
             'to_beneficiaries' => InventoryTransaction::where('transaction_type', 'out')
-                ->whereNotNull('beneficiary_id')
+                ->where('orientation_out', 'beneficiary')
                 ->count(),
         ];
 
@@ -43,6 +44,7 @@ class InventoryOutController extends Controller
             'statistics' => $stats
         ], 200);
     }
+
 
 
 
