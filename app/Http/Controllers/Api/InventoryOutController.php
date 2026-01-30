@@ -48,9 +48,6 @@ class InventoryOutController extends Controller
     }
 
 
-
-
-
     public function store(Request $request)
     {
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
@@ -137,6 +134,7 @@ class InventoryOutController extends Controller
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         $inventoryTransaction = InventoryTransaction::where('id', $id)
             ->where('transaction_type', 'out')
             ->with([
@@ -145,6 +143,7 @@ class InventoryOutController extends Controller
                 'assistanceItems:id,name'
             ])
             ->first();
+
         if (! $inventoryTransaction) {
             return response()->json([
                 'message' => 'عملية الإخراج غير موجودة'
@@ -152,11 +151,12 @@ class InventoryOutController extends Controller
         }
 
         $validated = $request->validate([
-
             'transaction_date' => 'required|date',
             'orientation_out' => 'required|in:project,beneficiary,other',
+
             'project_id' => 'required_if:orientation_out,project|nullable|exists:projects,id',
             'beneficiary_id' => 'required_if:orientation_out,beneficiary|nullable|exists:beneficiaries,id',
+
             'notes' => 'nullable|string',
 
             'assistanceItems' => 'required|array|min:1',
@@ -177,16 +177,28 @@ class InventoryOutController extends Controller
             /** 2️⃣ حذف العناصر القديمة */
             $inventoryTransaction->assistanceItems()->detach();
 
-            /** 3️⃣ تحديث بيانات المعاملة */
+            /** 3️⃣ تحديد الجهة حسب اتجاه الإخراج */
+            $projectId = null;
+            $beneficiaryId = null;
+
+            if ($validated['orientation_out'] === 'project') {
+                $projectId = $validated['project_id'];
+            }
+
+            if ($validated['orientation_out'] === 'beneficiary') {
+                $beneficiaryId = $validated['beneficiary_id'];
+            }
+
+            /** 4️⃣ تحديث بيانات المعاملة */
             $inventoryTransaction->update([
                 'transaction_date' => $validated['transaction_date'],
-                'orientation_out' => $validated['orientation_out'],
-                'notes' => $validated['notes'] ?? null,
-                'project_id' => $validated['project_id'] ?? null,
-                'beneficiary_id' => $validated['beneficiary_id'] ?? null,
+                'orientation_out'   => $validated['orientation_out'],
+                'notes'             => $validated['notes'] ?? null,
+                'project_id'        => $projectId,
+                'beneficiary_id'    => $beneficiaryId,
             ]);
 
-            /** 4️⃣ إدخال العناصر الجديدة */
+            /** 5️⃣ إدخال العناصر الجديدة */
             foreach ($validated['assistanceItems'] as $row) {
 
                 $item = AssistanceItem::lockForUpdate()
@@ -212,6 +224,7 @@ class InventoryOutController extends Controller
             'data' => $transaction->load('assistanceItems:id,name')
         ], 200);
     }
+
 
 
     public function destroy($id)
