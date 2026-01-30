@@ -59,37 +59,27 @@ class InventoryOutController extends Controller
             'orientation_out'  => 'required|in:project,beneficiary,other',
             'notes'            => 'nullable|string',
 
-            'project_id'       => 'required_if:orientation_out,project|nullable|exists:projects,id',
-            'beneficiary_id'   => 'required_if:orientation_out,beneficiary|nullable|exists:beneficiaries,id',
+            'project_id'       => 'required_if:orientation_out,project|exists:projects,id',
+            'beneficiary_id'   => 'required_if:orientation_out,beneficiary|exists:beneficiaries,id',
 
             'assistanceItems'                      => 'required|array|min:1',
             'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
             'assistanceItems.*.quantity'           => 'required|integer|min:1',
         ]);
 
-        $transaction = DB::transaction(function () use ($validated) {
+        $transaction = DB::transaction(function () use ($validated, $request) {
 
-            /** تحديد الجهة حسب اتجاه الإخراج */
-            $projectId = null;
-            $beneficiaryId = null;
-
-            if ($validated['orientation_out'] === 'project') {
-                $projectId = $validated['project_id'];
-            }
-
-            if ($validated['orientation_out'] === 'beneficiary') {
-                $beneficiaryId = $validated['beneficiary_id'];
-            }
-
-            /** إنشاء المعاملة */
-            $transaction = InventoryTransaction::create([
+            $dataToCreate = [
                 'transaction_type' => 'out',
                 'transaction_date' => $validated['transaction_date'],
                 'orientation_out'  => $validated['orientation_out'],
                 'notes'            => $validated['notes'] ?? null,
-                'project_id'       => $projectId,
-                'beneficiary_id'   => $beneficiaryId,
-            ]);
+                'project_id'       => $request->input('project_id'),
+                'beneficiary_id'   => $request->input('beneficiary_id'),
+            ];
+
+            /** إنشاء المعاملة */
+            $transaction = InventoryTransaction::create($dataToCreate);
 
             /** إدخال الأصناف */
             foreach ($validated['assistanceItems'] as $row) {
@@ -116,7 +106,7 @@ class InventoryOutController extends Controller
             'message' => 'تم تسجيل عملية الإخراج بنجاح',
             'data' => $transaction
                 ->refresh()
-                ->load(['project:id,name', 'beneficiary:id,name', 'assistanceItems:id,name'])
+                ->load(['project:id,name', 'beneficiary:id,full_name', 'assistanceItems:id,name'])
         ], 201);
     }
 
@@ -131,7 +121,7 @@ class InventoryOutController extends Controller
             ->where('transaction_type', 'out')
             ->with([
                 'project:id,name',
-                'beneficiary:id,name',
+            'beneficiary:id,full_name',
                 'assistanceItems:id,name'
             ])
             ->first();
@@ -156,11 +146,7 @@ class InventoryOutController extends Controller
 
         $inventoryTransaction = InventoryTransaction::where('id', $id)
             ->where('transaction_type', 'out')
-            ->with([
-                'project:id,name',
-                'beneficiary:id,name',
-                'assistanceItems:id,name'
-            ])
+            ->with('assistanceItems')
             ->first();
 
         if (! $inventoryTransaction) {
@@ -171,32 +157,29 @@ class InventoryOutController extends Controller
 
         $validated = $request->validate([
             'transaction_date' => 'required|date',
-            'orientation_out' => 'required|in:project,beneficiary,other',
+            'orientation_out'  => 'required|in:project,beneficiary,other',
 
-            'project_id' => 'required_if:orientation_out,project|nullable|exists:projects,id',
-            'beneficiary_id' => 'required_if:orientation_out,beneficiary|nullable|exists:beneficiaries,id',
+            'project_id'       => 'required_if:orientation_out,project|exists:projects,id',
+            'beneficiary_id'   => 'required_if:orientation_out,beneficiary|exists:beneficiaries,id',
 
-            'notes' => 'nullable|string',
+            'notes'            => 'nullable|string',
 
-            'assistanceItems' => 'required|array|min:1',
+            'assistanceItems'                      => 'required|array|min:1',
             'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
-            'assistanceItems.*.quantity' => 'required|integer|min:1',
+            'assistanceItems.*.quantity'           => 'required|integer|min:1',
         ]);
 
         $transaction = DB::transaction(function () use ($validated, $inventoryTransaction) {
 
-            /** 1️⃣ إعادة الكميات القديمة للمخزون */
+            /** إعادة الكميات القديمة */
             foreach ($inventoryTransaction->assistanceItems as $oldItem) {
-                $oldItem->increment(
-                    'quantity_in_stock',
-                    $oldItem->pivot->quantity
-                );
+                $oldItem->increment('quantity_in_stock', $oldItem->pivot->quantity);
             }
 
-            /** 2️⃣ حذف العناصر القديمة */
+            /** حذف الأصناف القديمة */
             $inventoryTransaction->assistanceItems()->detach();
 
-            /** 3️⃣ تحديد الجهة حسب اتجاه الإخراج */
+            /** تحديد الجهة */
             $projectId = null;
             $beneficiaryId = null;
 
@@ -208,16 +191,16 @@ class InventoryOutController extends Controller
                 $beneficiaryId = $validated['beneficiary_id'];
             }
 
-            /** 4️⃣ تحديث بيانات المعاملة */
+            /** تحديث المعاملة */
             $inventoryTransaction->update([
                 'transaction_date' => $validated['transaction_date'],
-                'orientation_out'   => $validated['orientation_out'],
-                'notes'             => $validated['notes'] ?? null,
-                'project_id'        => $projectId,
-                'beneficiary_id'    => $beneficiaryId,
+                'orientation_out'  => $validated['orientation_out'],
+                'notes'            => $validated['notes'] ?? null,
+                'project_id'       => $projectId,
+                'beneficiary_id'   => $beneficiaryId,
             ]);
 
-            /** 5️⃣ إدخال العناصر الجديدة */
+            /** إدخال الأصناف الجديدة */
             foreach ($validated['assistanceItems'] as $row) {
 
                 $item = AssistanceItem::lockForUpdate()
@@ -242,13 +225,10 @@ class InventoryOutController extends Controller
             'message' => 'تم تحديث عملية الإخراج بنجاح',
             'data' => $transaction
                 ->refresh()
-                ->load([
-                    'project:id,name',
-                    'beneficiary:id,name',
-                    'assistanceItems:id,name'
-                ])
+                ->load(['project:id,name', 'beneficiary:id,full_name', 'assistanceItems:id,name'])
         ], 200);
     }
+
 
 
 
@@ -261,7 +241,7 @@ class InventoryOutController extends Controller
             ->where('transaction_type', 'out')
             ->with([
                 'project:id,name',
-                'beneficiary:id,name',
+            'beneficiary:id,full_name',
                 'assistanceItems:id,name'
             ])
             ->first();
