@@ -53,33 +53,49 @@ class InventoryOutController extends Controller
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         $validated = $request->validate([
             'transaction_date' => 'required|date',
-            'orientation_out' => 'required|in:project,beneficiary,other',
-            'notes' => 'nullable|string',
+            'orientation_out'  => 'required|in:project,beneficiary,other',
+            'notes'            => 'nullable|string',
 
-            'project_id' => 'required_if:orientation_out,project|nullable|exists:projects,id',
-            'beneficiary_id' => 'required_if:orientation_out,beneficiary|nullable|exists:beneficiaries,id',
+            'project_id'       => 'required_if:orientation_out,project|nullable|exists:projects,id',
+            'beneficiary_id'   => 'required_if:orientation_out,beneficiary|nullable|exists:beneficiaries,id',
 
-            'assistanceItems' => 'required|array|min:1',
+            'assistanceItems'                      => 'required|array|min:1',
             'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
-            'assistanceItems.*.quantity' => 'required|integer|min:1',
+            'assistanceItems.*.quantity'           => 'required|integer|min:1',
         ]);
 
         $transaction = DB::transaction(function () use ($validated) {
 
+            /** تحديد الجهة حسب اتجاه الإخراج */
+            $projectId = null;
+            $beneficiaryId = null;
+
+            if ($validated['orientation_out'] === 'project') {
+                $projectId = $validated['project_id'];
+            }
+
+            if ($validated['orientation_out'] === 'beneficiary') {
+                $beneficiaryId = $validated['beneficiary_id'];
+            }
+
+            /** إنشاء المعاملة */
             $transaction = InventoryTransaction::create([
                 'transaction_type' => 'out',
                 'transaction_date' => $validated['transaction_date'],
-                'orientation_out' => $validated['orientation_out'],
-                'notes' => $validated['notes'] ?? null,
-                'project_id' => $validated['project_id'] ?? null,
-                'beneficiary_id' => $validated['beneficiary_id'] ?? null,
+                'orientation_out'  => $validated['orientation_out'],
+                'notes'            => $validated['notes'] ?? null,
+                'project_id'       => $projectId,
+                'beneficiary_id'   => $beneficiaryId,
             ]);
 
+            /** إدخال الأصناف */
             foreach ($validated['assistanceItems'] as $row) {
 
-                $item = AssistanceItem::lockForUpdate()->findOrFail($row['assistance_item_id']);
+                $item = AssistanceItem::lockForUpdate()
+                    ->findOrFail($row['assistance_item_id']);
 
                 if ($item->quantity_in_stock < $row['quantity']) {
                     throw new \Exception("الكمية غير كافية للصنف: {$item->name}");
@@ -98,9 +114,12 @@ class InventoryOutController extends Controller
 
         return response()->json([
             'message' => 'تم تسجيل عملية الإخراج بنجاح',
-            'data' => $transaction->load('assistanceItems:id,name')
+            'data' => $transaction
+                ->refresh()
+                ->load(['project:id,name', 'beneficiary:id,name', 'assistanceItems:id,name'])
         ], 201);
     }
+
 
     public function show($id)
     {
@@ -221,7 +240,13 @@ class InventoryOutController extends Controller
 
         return response()->json([
             'message' => 'تم تحديث عملية الإخراج بنجاح',
-            'data' => $transaction->load('assistanceItems:id,name')
+            'data' => $transaction
+                ->refresh()
+                ->load([
+                    'project:id,name',
+                    'beneficiary:id,name',
+                    'assistanceItems:id,name'
+                ])
         ], 200);
     }
 
