@@ -27,8 +27,8 @@ class InventoryTransaction extends Model
     public function assistanceItems()
     {
         return $this->belongsToMany(AssistanceItem::class, 'transaction_items')
-                    ->withPivot('quantity')
-                    ->withTimestamps();
+            ->withPivot('quantity')
+            ->withTimestamps();
     }
 
     public function project()
