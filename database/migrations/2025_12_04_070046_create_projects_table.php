@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('projects', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->enum('type', ['relief', 'solidarity', 'healthyh', 'educational', 'entertainment', 'awareness', 'celebration']);
+            $table->enum('type', ['relief', 'solidarity', 'healthyh', 'educational', 'entertainment', 'sensational', 'awareness', 'celebration']);
             $table->decimal('budget', 15, 2);
             $table->decimal('remaining_amount', 15, 2)->nullable();
             $table->date('start_date');
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('location')->nullable();
             $table->text('description')->nullable();
             $table->timestamps();
-            $table->softDeletes();
+            
         });
     }
 

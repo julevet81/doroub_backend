@@ -48,6 +48,7 @@ class InventoryOutController extends Controller
     }
 
 
+
     public function store(Request $request)
     {
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
@@ -143,12 +144,14 @@ class InventoryOutController extends Controller
         if (!Auth::user() || !Auth::user()->can('الخارج من المخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-
         $inventoryTransaction = InventoryTransaction::where('id', $id)
             ->where('transaction_type', 'out')
-            ->with('assistanceItems')
+            ->with([
+                'project:id,name',
+                'beneficiary:id,full_name',
+                'assistanceItems:id,name'
+            ])
             ->first();
-
         if (! $inventoryTransaction) {
             return response()->json([
                 'message' => 'عملية الإخراج غير موجودة'
@@ -157,50 +160,37 @@ class InventoryOutController extends Controller
 
         $validated = $request->validate([
             'transaction_date' => 'required|date',
-            'orientation_out'  => 'required|in:project,beneficiary,other',
+            'orientation_out' => 'required|in:project,beneficiary,other',
+            'notes' => 'nullable|string',
 
-            'project_id'       => 'required_if:orientation_out,project|exists:projects,id',
-            'beneficiary_id'   => 'required_if:orientation_out,beneficiary|exists:beneficiaries,id',
-
-            'notes'            => 'nullable|string',
-
-            'assistanceItems'                      => 'required|array|min:1',
+            'assistanceItems' => 'required|array|min:1',
             'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
-            'assistanceItems.*.quantity'           => 'required|integer|min:1',
+            'assistanceItems.*.quantity' => 'required|integer|min:1',
         ]);
 
         $transaction = DB::transaction(function () use ($validated, $inventoryTransaction) {
 
-            /** إعادة الكميات القديمة */
+            /** 1️⃣ إعادة الكميات القديمة للمخزون */
             foreach ($inventoryTransaction->assistanceItems as $oldItem) {
-                $oldItem->increment('quantity_in_stock', $oldItem->pivot->quantity);
+                $oldItem->increment(
+                    'quantity_in_stock',
+                    $oldItem->pivot->quantity
+                );
             }
 
-            /** حذف الأصناف القديمة */
+            /** 2️⃣ حذف العناصر القديمة */
             $inventoryTransaction->assistanceItems()->detach();
 
-            /** تحديد الجهة */
-            $projectId = null;
-            $beneficiaryId = null;
-
-            if ($validated['orientation_out'] === 'project') {
-                $projectId = $validated['project_id'];
-            }
-
-            if ($validated['orientation_out'] === 'beneficiary') {
-                $beneficiaryId = $validated['beneficiary_id'];
-            }
-
-            /** تحديث المعاملة */
+            /** 3️⃣ تحديث بيانات المعاملة */
             $inventoryTransaction->update([
                 'transaction_date' => $validated['transaction_date'],
-                'orientation_out'  => $validated['orientation_out'],
-                'notes'            => $validated['notes'] ?? null,
-                'project_id'       => $projectId,
-                'beneficiary_id'   => $beneficiaryId,
+                'orientation_out' => $validated['orientation_out'],
+                'notes' => $validated['notes'] ?? null,
+                'project_id' => $validated['project_id'] ?? null,
+                'beneficiary_id' => $validated['beneficiary_id'] ?? null,
             ]);
 
-            /** إدخال الأصناف الجديدة */
+            /** 4️⃣ إدخال العناصر الجديدة */
             foreach ($validated['assistanceItems'] as $row) {
 
                 $item = AssistanceItem::lockForUpdate()

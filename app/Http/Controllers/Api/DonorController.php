@@ -36,7 +36,7 @@ class DonorController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'activity' => 'required|string|unique:donors,activity',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'required|string|max:20',
             'assistance_category_id' => 'nullable|exists:assistance_categories,id',
             'description' => 'nullable|string',
         ]);
@@ -71,7 +71,7 @@ class DonorController extends Controller
         $validated = $request->validate([
             'full_name' => 'sometimes|string|max:255',
             'activity' => 'sometimes|string|unique:donors,activity,' . $donor->id,
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'required|string|max:20',
             'assistance_category_id' => 'sometimes|exists:assistance_categories,id',
             'description' => 'nullable|string',
         ]);
