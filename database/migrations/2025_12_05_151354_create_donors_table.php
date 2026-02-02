@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('donors', function (Blueprint $table) {
             $table->id();
             $table->string('full_name');
-            $table->string('activity')->unique();
+            $table->string('activity');
             $table->string('phone');
             $table->enum('assistance_type', ['financial', 'material', 'food', 'medical', 'other']);
             $table->text('description')->nullable();

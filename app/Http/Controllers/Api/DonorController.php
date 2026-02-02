@@ -24,9 +24,6 @@ class DonorController extends Controller
         ], 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         if (!Auth::user() || !Auth::user()->can('المتبرعين')) {
@@ -35,7 +32,7 @@ class DonorController extends Controller
 
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
-            'activity' => 'required|string|unique:donors,activity',
+            'activity' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'assistance_type' => 'required|in:financial,material,food,medical,other',
             'description' => 'nullable|string',
@@ -70,7 +67,7 @@ class DonorController extends Controller
 
         $validated = $request->validate([
             'full_name' => 'sometimes|string|max:255',
-            'activity' => 'sometimes|string|unique:donors,activity,' . $donor->id,
+            'activity' => 'sometimes|string' . $donor->id,
             'phone' => 'required|string|max:20',
             'assistance_type' => 'sometimes|in:financial,material,food,medical,other',
             'description' => 'nullable|string',
@@ -88,7 +85,7 @@ class DonorController extends Controller
         if (!Auth::user() || !Auth::user()->can('المتبرعين')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
-        
+
         $donor->delete();
 
         return response()->json([
