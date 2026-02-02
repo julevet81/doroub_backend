@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('full_name');
             $table->string('activity')->unique();
             $table->string('phone');
-            $table->foreignId('assistance_category_id')->constrained()->onDelete('cascade');
+            $table->enum('assistance_type', ['financial', 'material', 'food', 'medical', 'other']);
             $table->text('description')->nullable();
             $table->timestamps();
             $table->softDeletes();

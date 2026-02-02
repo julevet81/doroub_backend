@@ -20,7 +20,7 @@ class DonorController extends Controller
         }
 
         return response()->json([
-            'data' => Donor::with('assistanceCategory')->get()
+            'data' => Donor::with('assistance_type')->get()
         ], 200);
     }
 
@@ -37,7 +37,7 @@ class DonorController extends Controller
             'full_name' => 'required|string|max:255',
             'activity' => 'required|string|unique:donors,activity',
             'phone' => 'required|string|max:20',
-            'assistance_category_id' => 'nullable|exists:assistance_categories,id',
+            'assistance_type' => 'required|in:financial,material,food,medical,other',
             'description' => 'nullable|string',
         ]);
 
@@ -45,7 +45,7 @@ class DonorController extends Controller
 
         return response()->json([
             'message' => 'تم إضافة المتبرع بنجاح',
-            'data' => $donor->load('assistanceCategory')
+            'data' => $donor
         ], 201);
     }
     public function show(Donor $donor)
@@ -55,7 +55,7 @@ class DonorController extends Controller
         }
 
         return response()->json([
-            'data' => $donor->load('assistanceCategory')
+            'data' => $donor
         ], 200);
     }
 
@@ -72,7 +72,7 @@ class DonorController extends Controller
             'full_name' => 'sometimes|string|max:255',
             'activity' => 'sometimes|string|unique:donors,activity,' . $donor->id,
             'phone' => 'required|string|max:20',
-            'assistance_category_id' => 'sometimes|exists:assistance_categories,id',
+            'assistance_type' => 'sometimes|in:financial,material,food,medical,other',
             'description' => 'nullable|string',
         ]);
 
@@ -80,7 +80,7 @@ class DonorController extends Controller
 
         return response()->json([
             'message' => 'تم تحديث بيانات المتبرع بنجاح',
-            'data' => $donor->load('assistanceCategory')
+            'data' => $donor
         ], 200);
     }
     public function destroy(Donor $donor)

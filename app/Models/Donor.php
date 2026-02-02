@@ -13,14 +13,9 @@ class Donor extends Model
         'full_name',
         'activity',
         'phone',
-        'assistance_category_id',
+        'assistance_type',
         'description',
     ];
-
-    public function assistanceCategory()
-    {
-        return $this->belongsTo(AssistanceCategory::class);
-    }
 
     public function inventoryTransactions()
     {
