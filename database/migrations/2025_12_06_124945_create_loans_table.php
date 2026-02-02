@@ -17,6 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('beneficiary_id');
             $table->boolean('new_beneficiary')->default(false);
             $table->date('loan_date');
+            $table->date('return_date')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
             $table->softDeletes();

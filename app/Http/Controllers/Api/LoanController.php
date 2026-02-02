@@ -35,6 +35,7 @@ class LoanController extends Controller
         $request->validate([
             'device_id' => 'required|exists:devices,id',
             'loan_date' => 'required|date',
+            'return_date' => 'nullable|date',
             'new_beneficiary' => 'nullable|boolean',
         ]);
 
@@ -65,6 +66,7 @@ class LoanController extends Controller
             'beneficiary_id' => $beneficiary_id,
             'new_beneficiary' => $request->new_beneficiary ? true : false,
             'loan_date' => $request->loan_date,
+            'return_date' => $request->return_date,
             'notes' => $request->notes,
         ]);
 
@@ -102,6 +104,7 @@ class LoanController extends Controller
         $request->validate([
             'device_id' => 'required|exists:devices,id',
             'loan_date' => 'required|date',
+            'return_date' => 'nullable|date',
         ]);
 
         $oldDeviceId = $loan->device_id;
@@ -147,7 +150,7 @@ class LoanController extends Controller
         $loan->update([
             'device_id' => $request->device_id,
             'loan_date' => $request->loan_date,
-            'status' => $request->status,
+            'return_date' => $request->return_date,
             'notes' => $request->notes,
         ]);
 

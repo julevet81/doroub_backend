@@ -15,6 +15,7 @@ class Loan extends Model
         'beneficiary_id',
         'new_beneficiary',
         'loan_date',
+        'return_date',
         'notes',
     ];
 
