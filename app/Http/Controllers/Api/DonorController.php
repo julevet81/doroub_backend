@@ -20,7 +20,7 @@ class DonorController extends Controller
         }
 
         return response()->json([
-            'data' => Donor::with('assistance_type')->get()
+            'data' => Donor::all()
         ], 200);
     }
 

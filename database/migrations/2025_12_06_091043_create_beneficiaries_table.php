@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('address')->nullable();
             $table->string('phone_1')->nullable();
             $table->string('phone_2')->nullable();
-            $table->enum('social_status', ['maried', 'single', 'divorced', 'widowed', 'cancer_patient'])->default('maried');
+            $table->enum('social_status', ['maried', 'divorced', 'widowed', 'low_income', 'cancer_patient'])->default('maried');
             $table->enum('gender', ['male', 'female']);
             $table->integer('nbr_in_family')->nullable();
             $table->foreignId('partner_id')->nullable()->constrained('partner_infos')->onDelete('cascade');
@@ -36,7 +36,7 @@ return new class extends Migration
             $table->foreignId('district_id')->constrained('districts')->onDelete('cascade');
             $table->string('city')->nullable();
             $table->string('neighborhood')->nullable();
-            $table->enum('house_status', ['owned', 'rented', 'family'])->default('owned');
+            $table->enum('house_status', ['owned', 'rented', 'host', 'other'])->default('owned');
             $table->string('national_id')->nullable()->unique();
             $table->string('national_id_at')->nullable();
             $table->string('national_id_from')->nullable();

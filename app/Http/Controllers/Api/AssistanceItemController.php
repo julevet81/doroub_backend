@@ -20,9 +20,6 @@ class AssistanceItemController extends Controller
         ], 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         if (!Auth::user() || !Auth::user()->can('عناصر المخزون')) {
@@ -31,14 +28,15 @@ class AssistanceItemController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'quantity_in_stock' => 'sometimes|integer|min:0',
+            'code' => 'required|numeric|unique:assistance_items,code|max:255',
         ]);
 
-        $barcode = random_int(1000000000, 9999999999);
+        // $barcode = random_int(1000000000, 9999999999);
 
         $item = AssistanceItem::create([
             'name' => $validated['name'],
             'quantity_in_stock' => $validated['quantity_in_stock'] ?? 0,
-            'code' => $barcode,
+            'code' => $validated['code'],
         ]);
 
         return response()->json([

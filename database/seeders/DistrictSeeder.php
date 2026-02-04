@@ -13,7 +13,7 @@ class DistrictSeeder extends Seeder
         DB::table('districts')->insert([
             ['name' => 'الوادي'],
             ['name' => 'البياضة'],
-            ['name' => 'الرياح'],
+            ['name' => 'الرباح'],
             ['name' => 'الدبيلة'],
             ['name' => 'قمار'],
             ['name' => 'حاسي خليفه'],
