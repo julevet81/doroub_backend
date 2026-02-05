@@ -85,7 +85,7 @@ class BeneficiaryController extends Controller
                 $request->except(['partner', 'children', 'national_id_file']),
                 [
                     'partner_id' => $partnerId,
-                    'barcode' => uniqid(),
+                    'barcode' => (string) random_int(100000000000, 999999999999),
                     'national_id_file' => $nationalIdPath,
                 ]
             ));

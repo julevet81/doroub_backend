@@ -13,8 +13,30 @@ return new class extends Migration
     {
         Schema::create('registrations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('beneficiary_id')->constrained()->onDelete('cascade');
-            $table->enum('status', ['accepted', 'pending', 'rejected']);
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
+            $table->date('date_of_birth')->nullable();
+            $table->string('birth_place')->nullable();
+            $table->string('phone_1')->nullable();
+            $table->string('phone_2')->nullable();
+            $table->string('job')->nullable();
+            $table->string('health_status')->nullable();
+            $table->boolean('insured')->default(false);
+            $table->enum('social_status', ['divorced', 'widowed', 'low_income', 'cancer_patient'])->default('low_income');
+            $table->integer('nbr_in_family')->nullable();
+            $table->integer('nbr_studing')->default(0);
+            $table->enum('house_status', ['owned', 'rented', 'host', 'other'])->default('owned');
+            $table->foreignId('district_id')->constrained('districts')->onDelete('cascade');
+            $table->foreignId('municipality_id')->constrained('municipalities')->onDelete('cascade');
+            $table->string('city')->nullable();
+            $table->string('neighborhood')->nullable();
+            $table->string('first_name_of_wife')->nullable();
+            $table->string('last_name_of_wife')->nullable();
+            $table->date('date_of_birth_of_wife')->nullable();
+            $table->string('birth_place_of_wife')->nullable();
+            $table->string('job_of_wife')->nullable();
+            $table->string('health_status_of_wife')->nullable();
+            $table->boolean('is_wife_insured')->default(false);
             $table->text('notes')->nullable();
             $table->timestamps();
         });
