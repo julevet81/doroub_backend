@@ -37,6 +37,7 @@ return new class extends Migration
             $table->string('job_of_wife')->nullable();
             $table->string('health_status_of_wife')->nullable();
             $table->boolean('is_wife_insured')->default(false);
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

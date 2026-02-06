@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Registration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -84,7 +85,7 @@ class RegistrationController extends Controller
             'job_of_wife' => 'nullable|string|max:255',
             'health_status_of_wife' => 'nullable|string|max:255',
             'is_wife_insured' => 'nullable|boolean',
-
+            'status' => 'nullable|in:pending,approved,rejected',
             'notes' => 'nullable|string',
         ]);
 
@@ -145,6 +146,7 @@ class RegistrationController extends Controller
             'health_status_of_wife' => 'nullable|string|max:255',
             'is_wife_insured' => 'nullable|boolean',
 
+            'status' => 'nullable|in:pending,approved,rejected',
             'notes' => 'nullable|string',
         ]);
 

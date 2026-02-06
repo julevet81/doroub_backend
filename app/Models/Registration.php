@@ -35,6 +35,7 @@ class Registration extends Model
         'job_of_wife',
         'health_status_of_wife',
         'is_wife_insured',
+        'status',
         'notes',
     ];
 
