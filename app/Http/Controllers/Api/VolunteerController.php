@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\VolunteerSubscription;
+use App\Models\FinancialTransaction;
 
 class VolunteerController extends Controller
 {
@@ -72,12 +74,14 @@ class VolunteerController extends Controller
             'data' => $volunteer
         ], 200);
     }
+
     public function update(Request $request, Volunteer $volunteer)
     {
         if (!Auth::user() || !Auth::user()->can('عرض المتطوعين')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
 
+        // تحقق من بيانات المتطوع + مبلغ الاشتراك (كقيمة طلب فقط)
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'membership_id' => 'nullable|string|unique:volunteers,membership_id,' . $volunteer->id,
@@ -86,7 +90,6 @@ class VolunteerController extends Controller
             'phone_1' => 'nullable|string|max:20',
             'phone_2' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:255',
-            'subscriptions' => 'nullable|numeric',
             'date_of_birth' => 'nullable|date',
             'national_id' => 'nullable|string|max:50',
             'joining_date' => 'nullable|date',
@@ -95,15 +98,50 @@ class VolunteerController extends Controller
             'grade' => 'nullable|in:founder,active,honorary',
             'section' => 'nullable|in:planning,entry,executive,finance,management,resources,relations,media,social',
             'notes' => 'nullable|string',
+
+            // قيمة مؤقتة لإنشاء اشتراك
+            'subscription_amount' => 'nullable|numeric|min:1',
         ]);
 
-        $volunteer->update($validated);
+        /**
+         * 1️⃣ تحديث بيانات المتطوع فقط
+         */
+        $volunteer->update(
+            collect($validated)->except('subscription_amount')->toArray()
+        );
+
+        /**
+         * 2️⃣ إنشاء اشتراك جديد (إن وُجد)
+         */
+        if (isset($validated['subscription_amount'])) {
+
+            // إنشاء سجل الاشتراك
+            $subscription = $volunteer->subscriptions()->create([
+                'amount' => $validated['subscription_amount'],
+                'subscription_date' => now(),
+            ]);
+
+            // تسجيل العملية المالية
+            $lastBalance = FinancialTransaction::latest()->value('new_balance') ?? 0;
+
+            FinancialTransaction::create([
+                'amount' => $subscription->amount,
+                'transaction_type' => 'income',
+                'orientation' => 'treasury',
+                'payment_method' => 'cash',
+                'previous_balance' => $lastBalance,
+                'new_balance' => $lastBalance + $subscription->amount,
+                'description' => 'اشتراك متطوع: ' . $volunteer->full_name,
+                'transaction_date' => now(),
+            ]);
+        }
 
         return response()->json([
             'message' => 'تم تحديث المتطوع بنجاح',
-            'data' => $volunteer
+            'data' => $volunteer->load('subscriptions'),
         ], 200);
     }
+
     public function destroy(Volunteer $volunteer)
     {
         if (!Auth::user() || !Auth::user()->can('عرض المتطوعين')) {

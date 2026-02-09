@@ -11,18 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('project_volunteers', function (Blueprint $table) {
+        Schema::create('volunteer_subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('project_id')->constrained()->onDelete('cascade');
-            $table->foreignId('volunteer_id')->constrained()->onDelete('cascade');
-            $table->string('position')->nullable();
+            $table->foreignId('volunteer_id')->constrained()->cascadeOnDelete();
+            $table->decimal('amount', 15, 2);
+            $table->date('subscription_date')->default(now());
             $table->timestamps();
         });
     }
 
-    
     public function down(): void
     {
-        Schema::dropIfExists('project_volunteers');
+        Schema::dropIfExists('volunteer_subscriptions');
     }
 };

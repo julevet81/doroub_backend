@@ -34,5 +34,10 @@ class Volunteer extends Model
         return $this->belongsToMany(Project::class, 'project_volunteers')
             ->withPivot('position');
     }
-    
+
+    public function subscriptions()
+    {
+        return $this->hasMany(VolunteerSubscription::class);
+    }
 }
+
