@@ -12,47 +12,46 @@ class ProjectVolunteerController extends Controller
      */
     public function index()
     {
-        //
+        return response()->json([
+            'data' => ProjectVolunteer::all()
+        ], 200);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'volunteer_id' => 'required|exists:volunteers,id',
+            'position' => 'nullable|string|max:255',
+        ]);
+
+        $projectVolunteer = ProjectVolunteer::create($validated);
+
+        return response()->json([
+            'message' => 'تم إضافة المتطوع إلى المشروع بنجاح.',
+            'data' => $projectVolunteer
+        ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(ProjectVolunteer $projectVolunteer)
     {
-        //
+        return response()->json([
+            'data' => $projectVolunteer
+        ], 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(ProjectVolunteer $projectVolunteer)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, ProjectVolunteer $projectVolunteer)
     {
-        //
+        $validated = $request->validate([
+            'position' => 'nullable|string|max:255',
+        ]);
+
+        $projectVolunteer->update($validated);
+
+        return response()->json([
+            'message' => 'تم تحديث المتطوع في المشروع بنجاح.',
+            'data' => $projectVolunteer
+        ], 200);
     }
 
     /**
@@ -60,6 +59,10 @@ class ProjectVolunteerController extends Controller
      */
     public function destroy(ProjectVolunteer $projectVolunteer)
     {
-        //
+        $projectVolunteer->delete();
+
+        return response()->json([
+            'message' => 'تم حذف المتطوع من المشروع بنجاح.'
+        ], 200);
     }
 }
