@@ -26,7 +26,9 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->decimal('subscriptions', 15,2)->nullable();
             $table->string('skills')->nullable();
-            $table->enum('study_level', ['primary', 'intermediate','secondary','high_school', 'bachelor', 'master', 'phd', 'other'])->nullable();
+            $table->enum('study_level', ['primary_first', 'primary_second', '', 'intermediate', 'secondary', 'high_school', 'bachelor', 'master', 'phd', 'other'])->nullable();
+            $table->enum('study_level', ['primary_first', 'primary_second', '', 'intermediate', 'secondary', 'high_school', 'bachelor', 'master', 'phd', 'other'])->nullable();
+            $table->enum('study_level', ['primary_first', 'primary_second', 'primary_third', 'primary_forth', 'primary_fifth', 'intermediate_first', 'intermediate_second', 'intermediate_third', 'intermediate_forth','secondary_first', 'secondary_second', 'secondary_third', 'bachelor_1', 'bachelor_2', 'bachelor_3', 'master_1', 'master_2', 'phd'])->nullable();
             $table->enum('grade', ['founder', 'active', 'honorary'])->nullable();
             $table->enum('section', ['planning', 'entry', 'executive', 'finance', 'management', 'resources','relations', 'media', 'social'])->nullable();
             $table->text('notes')->nullable();

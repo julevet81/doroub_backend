@@ -10,7 +10,7 @@ class VolunteerSeeder extends Seeder
 {
     public function run(): void
     {
-         DB::table('volunteers')->insert([
+        DB::table('volunteers')->insert([
             [
                 'full_name' => 'أحمد بن علي',
                 'membership_id' => 'V-1001',
@@ -24,7 +24,7 @@ class VolunteerSeeder extends Seeder
                 'joining_date' => '2020-01-10',
                 'subscriptions' => 5000.00,
                 'skills' => 'إدارة المشاريع, التبرعات',
-                'study_level' => 'bachelor',
+                'study_level' => 'bachelor_3',
                 'grade' => 'active',
                 'section' => 'management',
                 'notes' => 'مشارك نشط في الأنشطة السنوية',
@@ -44,7 +44,7 @@ class VolunteerSeeder extends Seeder
                 'joining_date' => '2021-06-05',
                 'subscriptions' => 2500.00,
                 'skills' => 'التواصل الاجتماعي, العلاقات العامة',
-                'study_level' => 'master',
+                'study_level' => 'master_2',
                 'grade' => 'active',
                 'section' => 'relations',
                 'notes' => 'تعمل على تنسيق الحملات الاجتماعية',
@@ -64,7 +64,7 @@ class VolunteerSeeder extends Seeder
                 'joining_date' => '2019-09-12',
                 'subscriptions' => 10000.00,
                 'skills' => 'التخطيط المالي, الإدارة',
-                'study_level' => 'phd',
+                'study_level' => 'master_1',
                 'grade' => 'founder',
                 'section' => 'finance',
                 'notes' => 'مؤسس ومساهم رئيسي في الجمعية',
@@ -84,7 +84,7 @@ class VolunteerSeeder extends Seeder
                 'joining_date' => '2022-02-01',
                 'subscriptions' => 0.00,
                 'skills' => 'التسويق والإعلام',
-                'study_level' => 'bachelor',
+                'study_level' => 'bachelor_2',
                 'grade' => 'honorary',
                 'section' => 'media',
                 'notes' => 'عضو شرفي وداعم لمشاريع الجمعية',

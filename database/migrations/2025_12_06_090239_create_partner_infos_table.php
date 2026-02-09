@@ -18,7 +18,7 @@ return new class extends Migration
             $table->date('birth_date')->nullable();
             $table->string('birth_place')->nullable();
             $table->string('job')->nullable();
-            $table->enum('study_level', ['none', 'primary', 'intermediate', 'secondary', 'higher'])->nullable();
+            $table->enum('study_level', ['primary_first', 'primary_second', 'primary_third', 'primary_forth', 'primary_fifth', 'intermediate_first', 'intermediate_second', 'intermediate_third', 'intermediate_forth', 'secondary_first', 'secondary_second', 'secondary_third', 'bachelor_1', 'bachelor_2', 'bachelor_3', 'master_1', 'master_2', 'phd'])->nullable();
             $table->string('health_status')->nullable();
             $table->boolean('insured')->default(false);
             $table->string('income_source')->nullable();

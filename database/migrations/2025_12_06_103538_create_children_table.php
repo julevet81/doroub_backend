@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('full_name');
             $table->date('date_of_birth');
             $table->enum('gender', ['male', 'female']);
-            $table->enum('study_level', ['none', 'primary', 'intermediate', 'secondary', 'higher'])->nullable();
+            $table->enum('study_level', ['primary_first', 'primary_second', 'primary_third', 'primary_forth', 'primary_fifth', 'intermediate_first', 'intermediate_second', 'intermediate_third', 'intermediate_forth', 'secondary_first', 'secondary_second', 'secondary_third', 'bachelor_1', 'bachelor_2', 'bachelor_3', 'master_1', 'master_2', 'phd'])->nullable();
             $table->string('school')->nullable();
             $table->string('health_status')->nullable();
             $table->string('job')->nullable();

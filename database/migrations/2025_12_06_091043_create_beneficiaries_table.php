@@ -27,7 +27,7 @@ return new class extends Migration
             $table->integer('nbr_studing')->default(0);
             $table->string('job')->nullable();
             $table->boolean('insured')->default(false);
-            $table->enum('study_level', ['none', 'primary', 'intermediate', 'secondary', 'higher'])->nullable();
+            $table->enum('study_level', ['primary_first', 'primary_second', 'primary_third', 'primary_forth', 'primary_fifth', 'intermediate_first', 'intermediate_second', 'intermediate_third', 'intermediate_forth', 'secondary_first', 'secondary_second', 'secondary_third', 'bachelor_1', 'bachelor_2', 'bachelor_3', 'master_1', 'master_2', 'phd'])->nullable();
             $table->string('health_status')->nullable();
             $table->string('income_source')->nullable();
             $table->string('barcode')->unique();
