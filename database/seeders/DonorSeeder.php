@@ -36,7 +36,7 @@ class DonorSeeder extends Seeder
                 'full_name' => 'مؤسسة العطاء',
                 'activity' => 'توفير ملابس',
                 'phone' => '0550987654',
-                'assistance_type' => 'material',
+                'assistance_type' => 'medical',
                 'description' => 'تبرعات ملابس شتوية وصيفية للأطفال والعائلات.',
                 'created_at' => now(),
                 'updated_at' => now(),
