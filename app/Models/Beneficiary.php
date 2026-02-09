@@ -39,6 +39,8 @@ class Beneficiary extends Model
         'father_name',
         'mother_name',
         'beneficiary_category_id',
+        'national_id_file',
+        
     ];
 
     public function category()

@@ -146,6 +146,7 @@ class BeneficiaryController extends Controller
             'district_id' => 'required|exists:districts,id',
             'municipality_id' => 'nullable|exists:municipalities,id',
             'beneficiary_category_id' => 'nullable|exists:beneficiary_categories,id',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4096',
         ]);
 
         $beneficiary->update($validated);
