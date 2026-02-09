@@ -72,6 +72,7 @@ Route::middleware('auth:sanctum')->group(function () {
     ############################## المتطوعين ##############################
     Route::get('volunteers/statistics', [VolunteerController::class, 'statistics']);
     Route::delete('project-volunteers/{projectVolunteer}', [ProjectVolunteerController::class, 'destroy'])->name('project-volunteers.destroy');
+    Route::post('volunteer-subscriptions', [VolunteerSubscriptionController::class, 'store'])->name('volunteer-subscriptions.store');
     Route::delete('volunteer-subscriptions/{id}', [VolunteerSubscriptionController::class, 'destroy'])->name('volunteer-subscriptions.destroy');
     Route::apiResource('volunteers', VolunteerController::class);
     //Route::apiResource('project-volunteers', ProjectVolunteerController::class);

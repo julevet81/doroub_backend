@@ -121,19 +121,19 @@ class VolunteerController extends Controller
                 'subscription_date' => now(),
             ]);
 
-            // تسجيل العملية المالية
-            $lastBalance = FinancialTransaction::latest()->value('new_balance') ?? 0;
+            // // تسجيل العملية المالية
+            // $lastBalance = FinancialTransaction::latest()->value('new_balance') ?? 0;
 
-            FinancialTransaction::create([
-                'amount' => $subscription->amount,
-                'transaction_type' => 'income',
-                'orientation' => 'treasury',
-                'payment_method' => 'cash',
-                'previous_balance' => $lastBalance,
-                'new_balance' => $lastBalance + $subscription->amount,
-                'description' => 'اشتراك متطوع: ' . $volunteer->full_name,
-                'transaction_date' => now(),
-            ]);
+            // FinancialTransaction::create([
+            //     'amount' => $subscription->amount,
+            //     'transaction_type' => 'income',
+            //     'orientation' => 'treasury',
+            //     'payment_method' => 'cash',
+            //     'previous_balance' => $lastBalance,
+            //     'new_balance' => $lastBalance + $subscription->amount,
+            //     'description' => 'اشتراك متطوع: ' . $volunteer->full_name,
+            //     'transaction_date' => now(),
+            // ]);
         }
 
         return response()->json([

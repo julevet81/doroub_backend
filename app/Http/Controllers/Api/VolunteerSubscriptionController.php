@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FinancialTransaction;
+use App\Models\Volunteer;
 use App\Models\VolunteerSubscription;
 use Illuminate\Http\Request;
 
@@ -26,7 +28,23 @@ class VolunteerSubscriptionController extends Controller
             'subscription_date' => 'required|date',
         ]);
 
+        $volunteer = Volunteer::find($validated['volunteer_id']);
+
         $subscription = VolunteerSubscription::create($validated);
+
+        // تسجيل العملية المالية
+        $lastBalance = FinancialTransaction::latest()->value('new_balance') ?? 0;
+
+        FinancialTransaction::create([
+            'amount' => $subscription->amount,
+            'transaction_type' => 'income',
+            'orientation' => 'treasury',
+            'payment_method' => 'cash',
+            'previous_balance' => $lastBalance,
+            'new_balance' => $lastBalance + $subscription->amount,
+            'description' => 'اشتراك متطوع: ' . $volunteer->full_name,
+            'transaction_date' => now(),
+        ]);
 
         return response()->json([
             'message' => 'تم إنشاء اشتراك المتطوع بنجاح.',
