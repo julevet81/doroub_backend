@@ -34,8 +34,8 @@ use App\Http\Controllers\Api\Auth\{
     EmailVerificationController
 };
 use App\Http\Controllers\Api\PermissionController;
-use App\Http\Controllers\BeneficeController as ControllersBeneficeController;
-use App\Http\Controllers\ProjectVolunteerController;
+use App\Http\Controllers\Api\VolunteerSubscriptionController;
+use App\Http\Controllers\Api\ProjectVolunteerController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -72,11 +72,10 @@ Route::middleware('auth:sanctum')->group(function () {
     ############################## المتطوعين ##############################
     Route::get('volunteers/statistics', [VolunteerController::class, 'statistics']);
     Route::delete('project-volunteers/{projectVolunteer}', [ProjectVolunteerController::class, 'destroy'])->name('project-volunteers.destroy');
+    Route::delete('volunteer-subscriptions/{id}', [VolunteerSubscriptionController::class, 'destroy'])->name('volunteer-subscriptions.destroy');
     Route::apiResource('volunteers', VolunteerController::class);
     //Route::apiResource('project-volunteers', ProjectVolunteerController::class);
     
-    
-
     ############################## انواع المساعدات ##############################
     Route::apiResource('assistance-categories', AssistanceCategoryController::class);
 
