@@ -113,28 +113,28 @@ class VolunteerController extends Controller
         /**
          * 2️⃣ إنشاء اشتراك جديد (إن وُجد)
          */
-        if (isset($validated['subscription_amount'])) {
+        // if (isset($validated['subscription_amount'])) {
 
-            // إنشاء سجل الاشتراك
-            $subscription = $volunteer->subscriptions()->create([
-                'amount' => $validated['subscription_amount'],
-                'subscription_date' => now(),
-            ]);
+        //     // إنشاء سجل الاشتراك
+        //     $subscription = $volunteer->subscriptions()->create([
+        //         'amount' => $validated['subscription_amount'],
+        //         'subscription_date' => now(),
+        //     ]);
 
-            // // تسجيل العملية المالية
-            // $lastBalance = FinancialTransaction::latest()->value('new_balance') ?? 0;
+        //     // // تسجيل العملية المالية
+        //     // $lastBalance = FinancialTransaction::latest()->value('new_balance') ?? 0;
 
-            // FinancialTransaction::create([
-            //     'amount' => $subscription->amount,
-            //     'transaction_type' => 'income',
-            //     'orientation' => 'treasury',
-            //     'payment_method' => 'cash',
-            //     'previous_balance' => $lastBalance,
-            //     'new_balance' => $lastBalance + $subscription->amount,
-            //     'description' => 'اشتراك متطوع: ' . $volunteer->full_name,
-            //     'transaction_date' => now(),
-            // ]);
-        }
+        //     // FinancialTransaction::create([
+        //     //     'amount' => $subscription->amount,
+        //     //     'transaction_type' => 'income',
+        //     //     'orientation' => 'treasury',
+        //     //     'payment_method' => 'cash',
+        //     //     'previous_balance' => $lastBalance,
+        //     //     'new_balance' => $lastBalance + $subscription->amount,
+        //     //     'description' => 'اشتراك متطوع: ' . $volunteer->full_name,
+        //     //     'transaction_date' => now(),
+        //     // ]);
+        // }
 
         return response()->json([
             'message' => 'تم تحديث المتطوع بنجاح',

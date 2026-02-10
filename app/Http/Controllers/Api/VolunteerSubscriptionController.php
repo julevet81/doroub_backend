@@ -10,82 +10,65 @@ use Illuminate\Http\Request;
 
 class VolunteerSubscriptionController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    // عرض جميع اشتراكات متطوع معيّن
+    public function index($volunteerId)
     {
+        $volunteer = Volunteer::with('subscriptions')->findOrFail($volunteerId);
+
         return response()->json([
-            'data' => VolunteerSubscription::all()
-        ], 200);
+            'volunteer' => $volunteer->only(['id', 'name']),
+            'subscriptions' => $volunteer->subscriptions
+        ]);
     }
 
-    public function store(Request $request)
+    // إنشاء اشتراك جديد لمتطوع
+    public function store(Request $request, $volunteerId)
     {
-        $validated = $request->validate([
-            'volunteer_id' => 'required|exists:volunteers,id',
-            'amount' => 'required|numeric',
+        $request->validate([
+            'amount' => 'required|numeric|min:0',
             'subscription_date' => 'required|date',
         ]);
 
-        $volunteer = Volunteer::find($validated['volunteer_id']);
-
-        $subscription = VolunteerSubscription::create($validated);
-
-        // تسجيل العملية المالية
-        $lastBalance = FinancialTransaction::latest()->value('new_balance') ?? 0;
-
-        FinancialTransaction::create([
-            'amount' => $subscription->amount,
-            'transaction_type' => 'income',
-            'orientation' => 'treasury',
-            'payment_method' => 'cash',
-            'previous_balance' => $lastBalance,
-            'new_balance' => $lastBalance + $subscription->amount,
-            'description' => 'اشتراك متطوع: ' . $volunteer->full_name,
-            'transaction_date' => now(),
+        $subscription = VolunteerSubscription::create([
+            'volunteer_id' => $volunteerId,
+            'amount' => $request->amount,
+            'subscription_date' => $request->subscription_date,
         ]);
 
         return response()->json([
-            'message' => 'تم إنشاء اشتراك المتطوع بنجاح.',
+            'message' => 'تم إضافة الاشتراك بنجاح',
             'data' => $subscription
         ], 201);
     }
 
-    public function show(string $id)
+    // تعديل اشتراك
+    public function update(Request $request, $id)
     {
-        $subscription = VolunteerSubscription::findOrFail($id);
-
-        return response()->json([
-            'data' => $subscription
-        ], 200);
-    }
-
-    public function update(Request $request, string $id)
-    {
-        $subscription = VolunteerSubscription::findOrFail($id);
-
-        $validated = $request->validate([
-            'amount' => 'nullable|numeric',
+        $request->validate([
+            'amount' => 'nullable|numeric|min:0',
             'subscription_date' => 'nullable|date',
         ]);
 
-        $subscription->update($validated);
+        $subscription = VolunteerSubscription::findOrFail($id);
+        $subscription->update($request->only([
+            'amount',
+            'subscription_date'
+        ]));
 
         return response()->json([
-            'message' => 'تم تحديث اشتراك المتطوع بنجاح.',
+            'message' => 'تم تعديل الاشتراك بنجاح',
             'data' => $subscription
-        ], 200);
+        ]);
     }
 
-    
-    public function destroy(string $id)
+    // حذف اشتراك
+    public function destroy($id)
     {
         $subscription = VolunteerSubscription::findOrFail($id);
         $subscription->delete();
 
         return response()->json([
-            'message' => 'تم حذف اشتراك المتطوع بنجاح.'
-        ], 200);
+            'message' => 'تم حذف الاشتراك بنجاح'
+        ]);
     }
 }
