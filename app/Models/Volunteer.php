@@ -21,7 +21,6 @@ class Volunteer extends Model
         'date_of_birth',
         'national_id',
         'joining_date',
-        'subscriptions',
         'skills',
         'study_level',
         'grade',
