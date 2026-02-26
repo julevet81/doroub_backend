@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('project_id')->constrained()->onDelete('cascade');
             $table->foreignId('volunteer_id')->constrained()->onDelete('cascade');
-            $table->string('position')->nullable();
+            $table->enum('position', ['coordinator', 'supervisor', 'volunteer', 'responsible', 'other'])->nullable();
             $table->timestamps();
         });
     }
