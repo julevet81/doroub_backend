@@ -63,7 +63,7 @@ class InventoryTransactionController extends Controller
             'transaction_date' => 'required|date',
             'orientation' => 'nullable|string|in:inventory,project',
             'notes' => 'nullable|string',
-            
+
             'assistanceItems' => 'required|array|min:1',
             'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
             'assistanceItems.*.quantity' => 'required|numeric|min:1',
@@ -79,17 +79,28 @@ class InventoryTransactionController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            foreach ($validated['assistanceItems'] as $row) {
-
-                TransactionItem::create([
-                    'inventory_transaction_id' => $transaction->id,
-                    'assistance_item_id' => $row['assistance_item_id'],
-                    'quantity' => $row['quantity'],
+            foreach ($validated['assistanceItems'] as $item) {
+                $transaction->assistanceItems()->attach($item['assistance_item_id'], [
+                    'quantity' => $item['quantity']
                 ]);
 
-                AssistanceItem::where('id', $row['assistance_item_id'])
-                    ->increment('quantity_in_stock', $row['quantity']);
+                // زيادة الكمية في المخزون
+                AssistanceItem::where('id', $item['assistance_item_id'])
+                    ->increment('quantity_in_stock', $item['quantity']);
             }
+
+            // foreach ($validated['assistanceItems'] as $row) {
+
+            //     TransactionItem::create([
+            //         'inventory_transaction_id' => $transaction->id,
+            //         'assistance_item_id' => $row['assistance_item_id'],
+            //         'quantity' => $row['quantity'],
+            //     ]);
+
+
+            //     AssistanceItem::where('id', $row['assistance_item_id'])
+            //         ->increment('quantity_in_stock', $row['quantity']);
+            // }
 
             return $transaction;
         });
