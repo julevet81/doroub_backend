@@ -61,7 +61,7 @@ class InventoryTransactionController extends Controller
         $validated = $request->validate([
             'donor_id' => 'nullable|exists:donors,id',
             'transaction_date' => 'required|date',
-            'orientation' => 'nullable|string|in:inventory,project,beneficiary,other',
+            'orientation' => 'nullable|string|in:inventory,project',
             'notes' => 'nullable|string',
             
             'assistanceItems' => 'required|array|min:1',
@@ -146,7 +146,7 @@ class InventoryTransactionController extends Controller
         $validated = $request->validate([
             'donor_id' => 'nullable|exists:donors,id',
             'transaction_date' => 'sometimes|date',
-            'orientation' => 'nullable|string|in:inventory,project,beneficiary,other',
+            'orientation' => 'nullable|string|in:inventory,project',
             'notes' => 'nullable|string',
         ]);
 
