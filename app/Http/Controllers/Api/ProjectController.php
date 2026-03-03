@@ -9,7 +9,6 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
@@ -40,7 +39,8 @@ class ProjectController extends Controller
 
             // عناصر المشروع
             'items' => 'nullable|array',
-            'items.*.id' => 'required|integer|exists:assistance_items,id',
+            'items.*.id' => 'nullable|integer|exists:assistance_items,id',
+            'items.*.name' => 'nullable|string',
             'items.*.quantity' => 'required|integer|min:1',
 
             // متطوعو المشروع
@@ -53,10 +53,10 @@ class ProjectController extends Controller
         $availableBalance =
             FinancialTransaction::where('orientation', 'treasury')
             ->selectRaw("
-                COALESCE(SUM(CASE WHEN transaction_type = 'income' THEN amount ELSE 0 END), 0) -
-                COALESCE(SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END), 0)
-                as balance
-            ")
+            COALESCE(SUM(CASE WHEN transaction_type = 'income' THEN amount ELSE 0 END), 0) -
+            COALESCE(SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END), 0)
+            as balance
+        ")
             ->value('balance');
 
         if ($validated['budget'] > $availableBalance) {
@@ -70,7 +70,8 @@ class ProjectController extends Controller
         DB::beginTransaction();
 
         try {
-            // إنشاء المشروع
+
+            // ✅ إنشاء المشروع
             $project = Project::create([
                 'name' => $validated['name'],
                 'type' => $validated['type'],
@@ -83,17 +84,37 @@ class ProjectController extends Controller
                 'description' => $validated['description'] ?? null,
             ]);
 
-            // إضافة عناصر المشروع
+            // ✅ إضافة عناصر المشروع (مع إنشاء عنصر جديد إذا لم يوجد)
             if (!empty($validated['items'])) {
-                foreach ($validated['items'] as $item) {
-                    $project->items()->attach($item['id'], [
-                        'quantity' => $item['quantity'],
-                        'rest_in_project' => $item['quantity'],
+                foreach ($validated['items'] as $itemData) {
+
+                    // إذا كان عنده id → نستخدمه
+                    if (!empty($itemData['id'])) {
+                        $item = AssistanceItem::find($itemData['id']);
+                    }
+                    // إذا لم يوجد id ولكن يوجد name → ننشئ عنصر جديد
+                    elseif (!empty($itemData['name'])) {
+
+                        $barcode = random_int(1000000000, 9999999999);
+
+                        $item = AssistanceItem::create([
+                            'name' => $itemData['name'],
+                            'quantity_in_stock' => 0,
+                            'code' => $barcode,
+                        ]);
+                    } else {
+                        throw new \Exception('يجب إدخال id أو name للعنصر');
+                    }
+
+                    // ربط العنصر بالمشروع
+                    $project->items()->attach($item->id, [
+                        'quantity' => $itemData['quantity'],
+                        'rest_in_project' => $itemData['quantity'],
                     ]);
                 }
             }
 
-            // إضافة متطوعي المشروع
+            // ✅ إضافة المتطوعين
             if (!empty($validated['volunteers'])) {
                 foreach ($validated['volunteers'] as $volunteer) {
                     $project->volunteers()->attach($volunteer['id'], [
@@ -109,6 +130,7 @@ class ProjectController extends Controller
                 'data' => $project->load(['items', 'volunteers'])
             ], 201);
         } catch (\Exception $e) {
+
             DB::rollBack();
 
             return response()->json([
@@ -117,8 +139,6 @@ class ProjectController extends Controller
             ], 500);
         }
     }
-
-
 
     public function show(Project $project)
     {
@@ -144,7 +164,8 @@ class ProjectController extends Controller
 
             // عناصر المشروع
             'items' => 'nullable|array',
-            'items.*.id' => 'required|integer|exists:assistance_items,id',
+            'items.*.id' => 'nullable|integer|exists:assistance_items,id',
+            'items.*.name' => 'nullable|string',
             'items.*.quantity' => 'required|integer|min:1',
 
             // متطوعو المشروع
@@ -156,9 +177,9 @@ class ProjectController extends Controller
         $project = Project::findOrFail($id);
 
         /*
-    |----------------------------------------------------------------------
+    |--------------------------------------------------------------------------
     | التحقق من توفر الرصيد عند زيادة الميزانية
-    |----------------------------------------------------------------------
+    |--------------------------------------------------------------------------
     */
         if (isset($validated['budget'])) {
             $difference = $validated['budget'] - $project->budget;
@@ -167,10 +188,10 @@ class ProjectController extends Controller
                 $availableBalance =
                     FinancialTransaction::where('orientation', 'treasury')
                     ->selectRaw("
-                        COALESCE(SUM(CASE WHEN transaction_type = 'income' THEN amount ELSE 0 END), 0) -
-                        COALESCE(SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END), 0)
-                        as balance
-                    ")
+                    COALESCE(SUM(CASE WHEN transaction_type = 'income' THEN amount ELSE 0 END), 0) -
+                    COALESCE(SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END), 0)
+                    as balance
+                ")
                     ->value('balance');
 
                 if ($difference > $availableBalance) {
@@ -186,19 +207,18 @@ class ProjectController extends Controller
         DB::beginTransaction();
 
         try {
+
             /*
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
         | تحديث الميزانية مع الحفاظ على remaining_amount
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
         */
             if (isset($validated['budget'])) {
                 $difference = $validated['budget'] - $project->budget;
 
                 if ($difference > 0) {
-                    // زيادة الميزانية
                     $project->remaining_amount += $difference;
                 } else {
-                    // تخفيض الميزانية
                     if ($project->remaining_amount < abs($difference)) {
                         throw new \Exception('لا يمكن تخفيض الميزانية لأن remaining_amount لا يسمح بذلك');
                     }
@@ -206,45 +226,68 @@ class ProjectController extends Controller
                 }
             }
 
-            // تحديث بيانات المشروع الأساسية
+            // تحديث البيانات الأساسية
             $project->update(
                 collect($validated)->except(['items', 'volunteers'])->toArray()
             );
 
             /*
-        |----------------------------------------------------------------------
-        | تحديث عناصر المشروع
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
+        | تحديث عناصر المشروع (مع إنشاء عنصر جديد إن لم يوجد)
+        |--------------------------------------------------------------------------
         */
             if (!empty($validated['items'])) {
-                foreach ($validated['items'] as $item) {
+
+                foreach ($validated['items'] as $itemData) {
+
+                    // إذا يوجد id
+                    if (!empty($itemData['id'])) {
+                        $item = AssistanceItem::find($itemData['id']);
+                    }
+                    // إذا لا يوجد id ولكن يوجد name → ننشئ عنصر
+                    elseif (!empty($itemData['name'])) {
+
+                        $barcode = random_int(1000000000, 9999999999);
+
+                        $item = AssistanceItem::create([
+                            'name' => $itemData['name'],
+                            'quantity_in_stock' => 0,
+                            'code' => $barcode,
+                        ]);
+                    } else {
+                        throw new \Exception('يجب إدخال id أو name للعنصر');
+                    }
+
                     $existing = $project->items()
-                        ->where('assistance_item_id', $item['id'])
+                        ->where('assistance_item_id', $item->id)
                         ->first();
 
                     if ($existing) {
-                        if ($existing->pivot->rest_in_project > $item['quantity']) {
+
+                        if ($existing->pivot->rest_in_project > $itemData['quantity']) {
                             throw new \Exception('لا يمكن وضع كمية أقل من rest_in_project الحالية');
                         }
 
-                        $project->items()->updateExistingPivot($item['id'], [
-                            'quantity' => $item['quantity'],
+                        $project->items()->updateExistingPivot($item->id, [
+                            'quantity' => $itemData['quantity'],
                         ]);
                     } else {
-                        $project->items()->attach($item['id'], [
-                            'quantity' => $item['quantity'],
-                            'rest_in_project' => $item['quantity'],
+
+                        $project->items()->attach($item->id, [
+                            'quantity' => $itemData['quantity'],
+                            'rest_in_project' => $itemData['quantity'],
                         ]);
                     }
                 }
             }
 
             /*
-        |----------------------------------------------------------------------
-        | تحديث متطوعي المشروع
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
+        | تحديث المتطوعين
+        |--------------------------------------------------------------------------
         */
             if (!empty($validated['volunteers'])) {
+
                 $volunteersData = [];
 
                 foreach ($validated['volunteers'] as $volunteer) {
@@ -263,6 +306,7 @@ class ProjectController extends Controller
                 'data' => $project->load(['items', 'volunteers']),
             ], 200);
         } catch (\Exception $e) {
+
             DB::rollBack();
 
             return response()->json([
