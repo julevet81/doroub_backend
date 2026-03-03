@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AssistanceItem;
+use App\Models\Donor;
+use App\Models\FinancialTransaction;
 use App\Models\InventoryTransaction;
-use App\Models\TransactionItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,16 +22,15 @@ class InventoryTransactionController extends Controller
 
         // جميع عمليات الإدخال
         $transactions = InventoryTransaction::where('transaction_type', 'in')
-            ->with(['donor', 'assistanceItems', 'project'])
+            ->with(['assistanceItems', 'project'])
             ->get();
+
+        $count = Donor::count();
 
         // الإحصاءات
         $stats = [
-            // عدد المتبرعين (بدون تكرار)
-            'donors_count' => InventoryTransaction::where('transaction_type', 'in')
-                ->whereNotNull('donor_id')
-                ->distinct('donor_id')
-                ->count('donor_id'),
+
+            'donors_count' => $count,
 
             // عدد كل التحويلات من الخزينة (in)
             'total_in_transactions' => InventoryTransaction::where('transaction_type', 'in')->count(),
@@ -52,7 +52,6 @@ class InventoryTransactionController extends Controller
         ], 200);
     }
 
-
     public function store(Request $request)
     {
         if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
@@ -60,25 +59,66 @@ class InventoryTransactionController extends Controller
         }
 
         $validated = $request->validate([
+            'from_type' => 'nullable|string|in:donor,treasury',
+            'expected_amount' => 'required_if:from_type,treasury|numeric|min:0',
+            'attachment' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             'donor_id' => 'nullable|exists:donors,id',
             'transaction_date' => 'required|date',
             'orientation' => 'nullable|string|in:inventory,project',
             'notes' => 'nullable|string',
 
             'assistanceItems' => 'required|array|min:1',
-
-            // إذا كان موجود id يستعمله
             'assistanceItems.*.assistance_item_id' => 'nullable|exists:assistance_items,id',
-
-            // إذا لم يكن موجود id يجب إرسال الاسم
             'assistanceItems.*.name' => 'required_without:assistanceItems.*.assistance_item_id|string|max:255',
-
             'assistanceItems.*.quantity' => 'required|numeric|min:1',
         ]);
 
-        $transaction = DB::transaction(function () use ($validated) {
+        $transaction = DB::transaction(function () use ($validated, $request) {
 
-            $transaction = InventoryTransaction::create([
+            /*
+        |--------------------------------------------------------------------------
+        | 🔹 إذا كان المصدر من الخزينة
+        |--------------------------------------------------------------------------
+        */
+            if (($validated['from_type'] ?? null) === 'treasury') {
+
+                // 🔸 جلب آخر رصيد
+                $lastTransaction = FinancialTransaction::orderByDesc('id')->first();
+                $currentBalance = $lastTransaction?->new_balance ?? 0;
+
+                if ($currentBalance < $validated['expected_amount']) {
+                    throw new \Exception('الرصيد غير كافي في الخزينة');
+                }
+
+                // 🔸 رفع صورة الفاتورة
+                $attachmentPath = null;
+                if ($request->hasFile('attachment')) {
+                    $attachmentPath = $request->file('attachment')
+                        ->store('financial_attachments', 'public');
+                }
+
+                $newBalance = $currentBalance - $validated['expected_amount'];
+
+                // 🔸 تسجيل عملية خصم
+                FinancialTransaction::create([
+                    'amount' => $validated['expected_amount'],
+                    'transaction_type' => 'expense',
+                    'orientation' => 'treasury',
+                    'payment_method' => 'cash',
+                    'attachment' => $attachmentPath,
+                    'previous_balance' => $currentBalance,
+                    'new_balance' => $newBalance,
+                    'description' => 'شراء مواد للمخزون',
+                    'transaction_date' => $validated['transaction_date'],
+                ]);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔹 إنشاء عملية إدخال المخزون
+        |--------------------------------------------------------------------------
+        */
+            $inventoryTransaction = InventoryTransaction::create([
                 'transaction_type' => 'in',
                 'donor_id' => $validated['donor_id'] ?? null,
                 'transaction_date' => $validated['transaction_date'],
@@ -88,13 +128,9 @@ class InventoryTransactionController extends Controller
 
             foreach ($validated['assistanceItems'] as $itemData) {
 
-                // 🔹 إذا كان العنصر موجود مسبقاً
                 if (!empty($itemData['assistance_item_id'])) {
-
                     $item = AssistanceItem::find($itemData['assistance_item_id']);
                 } else {
-
-                    // 🔹 إنشاء عنصر جديد
                     $barcode = random_int(1000000000, 9999999999);
 
                     $item = AssistanceItem::create([
@@ -104,37 +140,19 @@ class InventoryTransactionController extends Controller
                     ]);
                 }
 
-                // 🔹 ربط العنصر بالمعاملة
-                $transaction->assistanceItems()->attach($item->id, [
+                $inventoryTransaction->assistanceItems()->attach($item->id, [
                     'quantity' => $itemData['quantity']
                 ]);
 
-                // 🔹 تحديث المخزون
                 $item->increment('quantity_in_stock', $itemData['quantity']);
             }
 
-            return $transaction->load('assistanceItems.assistanceCategory');
+            return $inventoryTransaction->load('assistanceItems.assistanceCategory');
         });
 
         return response()->json([
             'message' => 'تم تسجيل عملية الإدخال بنجاح',
-            'data' => [
-                'id' => $transaction->id,
-                'transaction_type' => $transaction->transaction_type,
-                'donor_id' => $transaction->donor_id,
-                'transaction_date' => $transaction->transaction_date,
-                'orientation' => $transaction->orientation,
-                'notes' => $transaction->notes,
-                'assistanceItems' => $transaction->assistanceItems->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'name' => $item->name,
-                        'category' => $item->assistanceCategory?->name,
-                        'quantity' => $item->pivot->quantity,
-                        'current_stock' => $item->quantity_in_stock,
-                    ];
-                }),
-            ],
+            'data' => $transaction
         ], 201);
     }
 

@@ -12,6 +12,9 @@ class InventoryTransaction extends Model
 
     protected $fillable = [
         'transaction_type',
+        'from_type',
+        'expected_amount',
+        'attachment',
         'donor_id',
         'orientation_out',
         'project_id',
