@@ -28,15 +28,15 @@ class AssistanceItemController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'quantity_in_stock' => 'sometimes|integer|min:0',
-            'code' => 'required|numeric|unique:assistance_items,code|max:255',
+            'code' => 'nullable|numeric|unique:assistance_items,code|max:255',
         ]);
 
-        // $barcode = random_int(1000000000, 9999999999);
+        $barcode = random_int(1000000000, 9999999999);
 
         $item = AssistanceItem::create([
             'name' => $validated['name'],
             'quantity_in_stock' => $validated['quantity_in_stock'] ?? 0,
-            'code' => $validated['code'],
+            'code' => $validated['code'] ?? $barcode,
         ]);
 
         return response()->json([

@@ -58,6 +58,7 @@ class InventoryTransactionController extends Controller
         if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         $validated = $request->validate([
             'donor_id' => 'nullable|exists:donors,id',
             'transaction_date' => 'required|date',
@@ -65,7 +66,13 @@ class InventoryTransactionController extends Controller
             'notes' => 'nullable|string',
 
             'assistanceItems' => 'required|array|min:1',
-            'assistanceItems.*.assistance_item_id' => 'required|exists:assistance_items,id',
+
+            // إذا كان موجود id يستعمله
+            'assistanceItems.*.assistance_item_id' => 'nullable|exists:assistance_items,id',
+
+            // إذا لم يكن موجود id يجب إرسال الاسم
+            'assistanceItems.*.name' => 'required_without:assistanceItems.*.assistance_item_id|string|max:255',
+
             'assistanceItems.*.quantity' => 'required|numeric|min:1',
         ]);
 
@@ -79,30 +86,34 @@ class InventoryTransactionController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            foreach ($validated['assistanceItems'] as $item) {
-                $transaction->assistanceItems()->attach($item['assistance_item_id'], [
-                    'quantity' => $item['quantity']
+            foreach ($validated['assistanceItems'] as $itemData) {
+
+                // 🔹 إذا كان العنصر موجود مسبقاً
+                if (!empty($itemData['assistance_item_id'])) {
+
+                    $item = AssistanceItem::find($itemData['assistance_item_id']);
+                } else {
+
+                    // 🔹 إنشاء عنصر جديد
+                    $barcode = random_int(1000000000, 9999999999);
+
+                    $item = AssistanceItem::create([
+                        'name' => $itemData['name'],
+                        'quantity_in_stock' => 0,
+                        'code' => $barcode,
+                    ]);
+                }
+
+                // 🔹 ربط العنصر بالمعاملة
+                $transaction->assistanceItems()->attach($item->id, [
+                    'quantity' => $itemData['quantity']
                 ]);
 
-                // زيادة الكمية في المخزون
-                AssistanceItem::where('id', $item['assistance_item_id'])
-                    ->increment('quantity_in_stock', $item['quantity']);
+                // 🔹 تحديث المخزون
+                $item->increment('quantity_in_stock', $itemData['quantity']);
             }
 
-            // foreach ($validated['assistanceItems'] as $row) {
-
-            //     TransactionItem::create([
-            //         'inventory_transaction_id' => $transaction->id,
-            //         'assistance_item_id' => $row['assistance_item_id'],
-            //         'quantity' => $row['quantity'],
-            //     ]);
-
-
-            //     AssistanceItem::where('id', $row['assistance_item_id'])
-            //         ->increment('quantity_in_stock', $row['quantity']);
-            // }
-
-            return $transaction;
+            return $transaction->load('assistanceItems.assistanceCategory');
         });
 
         return response()->json([
@@ -120,6 +131,7 @@ class InventoryTransactionController extends Controller
                         'name' => $item->name,
                         'category' => $item->assistanceCategory?->name,
                         'quantity' => $item->pivot->quantity,
+                        'current_stock' => $item->quantity_in_stock,
                     ];
                 }),
             ],
