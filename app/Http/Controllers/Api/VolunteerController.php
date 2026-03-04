@@ -71,6 +71,13 @@ class VolunteerController extends Controller
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
 
+        $volunteer->load([
+            'projects' => function ($query) {
+                $query->withPivot('position');
+            },
+            'subscriptions'
+        ]);
+
         return response()->json([
             'data' => $volunteer
         ], 200);
