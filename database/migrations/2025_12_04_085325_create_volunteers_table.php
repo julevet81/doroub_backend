@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('volunteers', function (Blueprint $table) {
             $table->id();
             $table->string('full_name');
-            $table->string('membership_id')->unique();
+            $table->string('membership_id')->unique()->nullable();
             $table->enum('gender', ['male', 'female']);
             $table->string('email')->nullable();
             $table->string('phone_1')->nullable();

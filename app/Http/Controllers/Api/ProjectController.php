@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AssistanceItem;
 use App\Models\FinancialTransaction;
 use App\Models\Project;
+use App\Models\Volunteer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,10 @@ class ProjectController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
+            return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string',
             'type' => 'required|string|in:relief,solidarity,healthyh,educational,entertainment,awareness,celebration',
@@ -45,8 +50,9 @@ class ProjectController extends Controller
 
             // متطوعو المشروع
             'volunteers' => 'nullable|array',
-            'volunteers.*.id' => 'required|integer|exists:volunteers,id',
-            'volunteers.*.position' => 'nullable|string',
+            'volunteers.*.id' => 'nullable|integer|exists:volunteers,id',
+            'volunteers.*.full_name' => 'nullable|string|max:255',
+            'volunteers.*.position' => 'nullable|string|in:coordinator,supervisor,volunteer,responsible,other',
         ]);
 
         // 🔴 التحقق من توفر الميزانية
@@ -84,16 +90,13 @@ class ProjectController extends Controller
                 'description' => $validated['description'] ?? null,
             ]);
 
-            // ✅ إضافة عناصر المشروع (مع إنشاء عنصر جديد إذا لم يوجد)
+            // ✅ إضافة عناصر المشروع
             if (!empty($validated['items'])) {
                 foreach ($validated['items'] as $itemData) {
 
-                    // إذا كان عنده id → نستخدمه
                     if (!empty($itemData['id'])) {
                         $item = AssistanceItem::find($itemData['id']);
-                    }
-                    // إذا لم يوجد id ولكن يوجد name → ننشئ عنصر جديد
-                    elseif (!empty($itemData['name'])) {
+                    } elseif (!empty($itemData['name'])) {
 
                         $barcode = random_int(1000000000, 9999999999);
 
@@ -106,7 +109,6 @@ class ProjectController extends Controller
                         throw new \Exception('يجب إدخال id أو name للعنصر');
                     }
 
-                    // ربط العنصر بالمشروع
                     $project->items()->attach($item->id, [
                         'quantity' => $itemData['quantity'],
                         'rest_in_project' => $itemData['quantity'],
@@ -114,11 +116,46 @@ class ProjectController extends Controller
                 }
             }
 
-            // ✅ إضافة المتطوعين
+            // ✅ إضافة المتطوعين (موجود أو جديد)
             if (!empty($validated['volunteers'])) {
-                foreach ($validated['volunteers'] as $volunteer) {
-                    $project->volunteers()->attach($volunteer['id'], [
-                        'position' => $volunteer['position'] ?? null,
+
+                foreach ($validated['volunteers'] as $volunteerData) {
+
+                    // إذا أرسل id
+                    if (!empty($volunteerData['id'])) {
+
+                        $volunteer = Volunteer::find($volunteerData['id']);
+                    }
+                    // إذا أرسل full_name فقط → إنشاء جديد
+                    elseif (!empty($volunteerData['full_name'])) {
+
+                        $membershipId = $volunteerData['membership_id']
+                            ?? 'AUTO-' . strtoupper(uniqid());
+
+                        $volunteer = Volunteer::create([
+                            'full_name' => $volunteerData['full_name'],
+                            'membership_id' => $membershipId,
+                            'gender' => $volunteerData['gender'] ?? 'male',
+                            'email' => $volunteerData['email'] ?? null,
+                            'phone_1' => $volunteerData['phone_1'] ?? null,
+                            'phone_2' => $volunteerData['phone_2'] ?? null,
+                            'address' => $volunteerData['address'] ?? null,
+                            'date_of_birth' => $volunteerData['date_of_birth'] ?? null,
+                            'national_id' => $volunteerData['national_id'] ?? null,
+                            'joining_date' => $volunteerData['joining_date'] ?? now(),
+                            'skills' => $volunteerData['skills'] ?? null,
+                            'study_level' => $volunteerData['study_level'] ?? null,
+                            'grade' => $volunteerData['grade'] ?? 'active',
+                            'section' => $volunteerData['section'] ?? null,
+                            'notes' => $volunteerData['notes'] ?? null,
+                        ]);
+                    } else {
+
+                        throw new \Exception('يجب إدخال id أو full_name للمتطوع');
+                    }
+
+                    $project->volunteers()->attach($volunteer->id, [
+                        'position' => $volunteerData['position'] ?? null,
                     ]);
                 }
             }
@@ -139,7 +176,6 @@ class ProjectController extends Controller
             ], 500);
         }
     }
-
     public function show(Project $project)
     {
         if (!Auth::user() || !Auth::user()->can('عرض المشاريع')) {
@@ -168,10 +204,11 @@ class ProjectController extends Controller
             'items.*.name' => 'nullable|string',
             'items.*.quantity' => 'required|integer|min:1',
 
-            // متطوعو المشروع
+            // المتطوعون (موجود أو جديد)
             'volunteers' => 'nullable|array',
-            'volunteers.*.id' => 'required|integer|exists:volunteers,id',
-            'volunteers.*.position' => 'nullable|string',
+            'volunteers.*.id' => 'nullable|integer|exists:volunteers,id',
+            'volunteers.*.full_name' => 'nullable|string|max:255',
+            'volunteers.*.position' => 'nullable|string|in:coordinator,supervisor,volunteer,responsible,other',
         ]);
 
         $project = Project::findOrFail($id);
@@ -226,26 +263,22 @@ class ProjectController extends Controller
                 }
             }
 
-            // تحديث البيانات الأساسية
             $project->update(
                 collect($validated)->except(['items', 'volunteers'])->toArray()
             );
 
             /*
         |--------------------------------------------------------------------------
-        | تحديث عناصر المشروع (مع إنشاء عنصر جديد إن لم يوجد)
+        | تحديث عناصر المشروع
         |--------------------------------------------------------------------------
         */
             if (!empty($validated['items'])) {
 
                 foreach ($validated['items'] as $itemData) {
 
-                    // إذا يوجد id
                     if (!empty($itemData['id'])) {
                         $item = AssistanceItem::find($itemData['id']);
-                    }
-                    // إذا لا يوجد id ولكن يوجد name → ننشئ عنصر
-                    elseif (!empty($itemData['name'])) {
+                    } elseif (!empty($itemData['name'])) {
 
                         $barcode = random_int(1000000000, 9999999999);
 
@@ -283,16 +316,46 @@ class ProjectController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | تحديث المتطوعين
+        | تحديث المتطوعين (موجود أو إنشاء جديد)
         |--------------------------------------------------------------------------
         */
             if (!empty($validated['volunteers'])) {
 
                 $volunteersData = [];
 
-                foreach ($validated['volunteers'] as $volunteer) {
-                    $volunteersData[$volunteer['id']] = [
-                        'position' => $volunteer['position'] ?? null,
+                foreach ($validated['volunteers'] as $volunteerData) {
+
+                    if (!empty($volunteerData['id'])) {
+
+                        $volunteer = Volunteer::find($volunteerData['id']);
+                    } elseif (!empty($volunteerData['full_name'])) {
+
+                        $membershipId = $volunteerData['membership_id']
+                            ?? 'AUTO-' . strtoupper(uniqid());
+
+                        $volunteer = Volunteer::create([
+                            'full_name' => $volunteerData['full_name'],
+                            'membership_id' => $membershipId,
+                            'gender' => $volunteerData['gender'] ?? 'male',
+                            'email' => $volunteerData['email'] ?? null,
+                            'phone_1' => $volunteerData['phone_1'] ?? null,
+                            'phone_2' => $volunteerData['phone_2'] ?? null,
+                            'address' => $volunteerData['address'] ?? null,
+                            'date_of_birth' => $volunteerData['date_of_birth'] ?? null,
+                            'national_id' => $volunteerData['national_id'] ?? null,
+                            'joining_date' => $volunteerData['joining_date'] ?? now(),
+                            'skills' => $volunteerData['skills'] ?? null,
+                            'study_level' => $volunteerData['study_level'] ?? null,
+                            'grade' => $volunteerData['grade'] ?? 'active',
+                            'section' => $volunteerData['section'] ?? null,
+                            'notes' => $volunteerData['notes'] ?? null,
+                        ]);
+                    } else {
+                        throw new \Exception('يجب إدخال id أو full_name للمتطوع');
+                    }
+
+                    $volunteersData[$volunteer->id] = [
+                        'position' => $volunteerData['position'] ?? null,
                     ];
                 }
 
@@ -315,8 +378,6 @@ class ProjectController extends Controller
             ], 500);
         }
     }
-
-
 
     public function destroy(Project $project)
     {
