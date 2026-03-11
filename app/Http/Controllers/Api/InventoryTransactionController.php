@@ -60,9 +60,15 @@ class InventoryTransactionController extends Controller
 
         $validated = $request->validate([
             'from_type' => 'nullable|string|in:donor,treasury',
+
+            // الخزينة
             'expected_amount' => 'required_if:from_type,treasury|numeric|min:0',
             'attachment' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+
+            // المتبرع
             'donor_id' => 'nullable|exists:donors,id',
+            'donor_full_name' => 'required_without:donor_id|string|max:255',
+
             'transaction_date' => 'required|date',
             'orientation' => 'nullable|string|in:inventory,project',
             'notes' => 'nullable|string',
@@ -75,14 +81,29 @@ class InventoryTransactionController extends Controller
 
         $transaction = DB::transaction(function () use ($validated, $request) {
 
+            $donorId = $validated['donor_id'] ?? null;
+
             /*
-        |--------------------------------------------------------------------------
+        |-----------------------------------------
+        | 🔹 إنشاء متبرع جديد إذا لم يكن موجود
+        |-----------------------------------------
+        */
+            if (($validated['from_type'] ?? null) === 'donor' && !$donorId && !empty($validated['donor_full_name'])) {
+
+                $donor = Donor::create([
+                    'full_name' => $validated['donor_full_name']
+                ]);
+
+                $donorId = $donor->id;
+            }
+
+            /*
+        |-----------------------------------------
         | 🔹 إذا كان المصدر من الخزينة
-        |--------------------------------------------------------------------------
+        |-----------------------------------------
         */
             if (($validated['from_type'] ?? null) === 'treasury') {
 
-                // 🔸 جلب آخر رصيد
                 $lastTransaction = FinancialTransaction::orderByDesc('id')->first();
                 $currentBalance = $lastTransaction?->new_balance ?? 0;
 
@@ -90,7 +111,6 @@ class InventoryTransactionController extends Controller
                     throw new \Exception('الرصيد غير كافي في الخزينة');
                 }
 
-                // 🔸 رفع صورة الفاتورة
                 $attachmentPath = null;
                 if ($request->hasFile('attachment')) {
                     $attachmentPath = $request->file('attachment')
@@ -99,7 +119,6 @@ class InventoryTransactionController extends Controller
 
                 $newBalance = $currentBalance - $validated['expected_amount'];
 
-                // 🔸 تسجيل عملية خصم
                 FinancialTransaction::create([
                     'amount' => $validated['expected_amount'],
                     'transaction_type' => 'expense',
@@ -114,13 +133,13 @@ class InventoryTransactionController extends Controller
             }
 
             /*
-        |--------------------------------------------------------------------------
+        |-----------------------------------------
         | 🔹 إنشاء عملية إدخال المخزون
-        |--------------------------------------------------------------------------
+        |-----------------------------------------
         */
             $inventoryTransaction = InventoryTransaction::create([
                 'transaction_type' => 'in',
-                'donor_id' => $validated['donor_id'] ?? null,
+                'donor_id' => $donorId,
                 'transaction_date' => $validated['transaction_date'],
                 'orientation' => $validated['orientation'] ?? null,
                 'notes' => $validated['notes'] ?? null,
@@ -147,7 +166,7 @@ class InventoryTransactionController extends Controller
                 $item->increment('quantity_in_stock', $itemData['quantity']);
             }
 
-            return $inventoryTransaction->load('assistanceItems.assistanceCategory');
+            return $inventoryTransaction->load('assistanceItems.assistanceCategory', 'donor');
         });
 
         return response()->json([

@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('donors', function (Blueprint $table) {
             $table->id();
             $table->string('full_name');
-            $table->string('activity');
-            $table->string('phone');
-            $table->enum('assistance_type', ['food', 'medical', 'education', 'emergency', 'other']);
+            $table->string('activity')->nullable();
+            $table->string('phone')->nullable();
+            $table->enum('assistance_type', ['food', 'medical', 'education', 'emergency', 'other'])->nullable();
             $table->text('description')->nullable();
             $table->timestamps();
             $table->softDeletes();
