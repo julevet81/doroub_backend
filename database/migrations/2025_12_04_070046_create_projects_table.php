@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::create('projects', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->enum('type', ['relief', 'solidarity', 'healthyh', 'educational', 'entertainment', 'sensational', 'awareness', 'celebration']);
-            $table->decimal('budget', 15, 2);
+            $table->enum('type', ['relief', 'solidarity', 'healthyh', 'educational', 'entertainment', 'sensational', 'awareness', 'celebration'])->nullable();
+            $table->decimal('budget', 15, 2)->nullable();
             $table->decimal('remaining_amount', 15, 2)->nullable();
-            $table->date('start_date');
+            $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->enum('status', ['planned', 'in_progress', 'completed', 'rejected'])->nullable();
             $table->string('location')->nullable();

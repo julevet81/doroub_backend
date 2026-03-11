@@ -7,6 +7,7 @@ use App\Models\AssistanceItem;
 use App\Models\Donor;
 use App\Models\FinancialTransaction;
 use App\Models\InventoryTransaction;
+use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -61,16 +62,19 @@ class InventoryTransactionController extends Controller
         $validated = $request->validate([
             'from_type' => 'nullable|string|in:donor,treasury',
 
-            // الخزينة
             'expected_amount' => 'required_if:from_type,treasury|numeric|min:0',
             'attachment' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
 
             // المتبرع
             'donor_id' => 'nullable|exists:donors,id',
-            'donor_full_name' => 'required_without:donor_id|string|max:255',
+            'donor_full_name' => 'nullable|string|max:255',
+
+            // المشروع
+            'orientation' => 'nullable|string|in:inventory,project',
+            'project_id' => 'nullable|exists:projects,id',
+            'project_name' => 'nullable|string|max:255',
 
             'transaction_date' => 'required|date',
-            'orientation' => 'nullable|string|in:inventory,project',
             'notes' => 'nullable|string',
 
             'assistanceItems' => 'required|array|min:1',
@@ -81,27 +85,57 @@ class InventoryTransactionController extends Controller
 
         $transaction = DB::transaction(function () use ($validated, $request) {
 
-            $donorId = $validated['donor_id'] ?? null;
+            $donorId = null;
+            $projectId = null;
 
             /*
-        |-----------------------------------------
-        | 🔹 إنشاء متبرع جديد إذا لم يكن موجود
-        |-----------------------------------------
+        |--------------------------------------------------------------------------
+        | 🔹 معالجة المتبرع
+        |--------------------------------------------------------------------------
         */
-            if (($validated['from_type'] ?? null) === 'donor' && !$donorId && !empty($validated['donor_full_name'])) {
 
-                $donor = Donor::create([
-                    'full_name' => $validated['donor_full_name']
-                ]);
+            if (($validated['from_type'] ?? null) === 'donor') {
 
-                $donorId = $donor->id;
+                if (!empty($validated['donor_id'])) {
+                    $donorId = $validated['donor_id'];
+                } elseif (!empty($validated['donor_full_name'])) {
+
+                    $donor = Donor::create([
+                        'full_name' => $validated['donor_full_name']
+                    ]);
+
+                    $donorId = $donor->id;
+                }
+                // إذا لم يوجد شيء → متبرع مجهول
             }
 
             /*
-        |-----------------------------------------
-        | 🔹 إذا كان المصدر من الخزينة
-        |-----------------------------------------
+        |--------------------------------------------------------------------------
+        | 🔹 معالجة المشروع
+        |--------------------------------------------------------------------------
         */
+
+            if (($validated['orientation'] ?? null) === 'project') {
+
+                if (!empty($validated['project_id'])) {
+                    $projectId = $validated['project_id'];
+                } elseif (!empty($validated['project_name'])) {
+
+                    $project = Project::create([
+                        'name' => $validated['project_name'],
+                        'status' => 'planned'
+                    ]);
+
+                    $projectId = $project->id;
+                }
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔹 إذا كان المصدر من الخزينة
+        |--------------------------------------------------------------------------
+        */
+
             if (($validated['from_type'] ?? null) === 'treasury') {
 
                 $lastTransaction = FinancialTransaction::orderByDesc('id')->first();
@@ -112,6 +146,7 @@ class InventoryTransactionController extends Controller
                 }
 
                 $attachmentPath = null;
+
                 if ($request->hasFile('attachment')) {
                     $attachmentPath = $request->file('attachment')
                         ->store('financial_attachments', 'public');
@@ -133,23 +168,34 @@ class InventoryTransactionController extends Controller
             }
 
             /*
-        |-----------------------------------------
+        |--------------------------------------------------------------------------
         | 🔹 إنشاء عملية إدخال المخزون
-        |-----------------------------------------
+        |--------------------------------------------------------------------------
         */
+
             $inventoryTransaction = InventoryTransaction::create([
                 'transaction_type' => 'in',
+                'from_type' => $validated['from_type'] ?? null,
+                'expected_amount' => $validated['expected_amount'] ?? null,
                 'donor_id' => $donorId,
+                'project_id' => $projectId,
                 'transaction_date' => $validated['transaction_date'],
-                'orientation' => $validated['orientation'] ?? null,
                 'notes' => $validated['notes'] ?? null,
             ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔹 إضافة عناصر المخزون
+        |--------------------------------------------------------------------------
+        */
 
             foreach ($validated['assistanceItems'] as $itemData) {
 
                 if (!empty($itemData['assistance_item_id'])) {
+
                     $item = AssistanceItem::find($itemData['assistance_item_id']);
                 } else {
+
                     $barcode = random_int(1000000000, 9999999999);
 
                     $item = AssistanceItem::create([
@@ -166,7 +212,11 @@ class InventoryTransactionController extends Controller
                 $item->increment('quantity_in_stock', $itemData['quantity']);
             }
 
-            return $inventoryTransaction->load('assistanceItems.assistanceCategory', 'donor');
+            return $inventoryTransaction->load([
+                'assistanceItems.assistanceCategory',
+                'donor',
+                'project'
+            ]);
         });
 
         return response()->json([
@@ -198,24 +248,104 @@ class InventoryTransactionController extends Controller
         if (!Auth::user() || !Auth::user()->can('الداخل للمخزون')) {
             return response()->json(['message' => 'غير مسموح لك بهذا الاجراء'], 403);
         }
+
         if ($inventoryTransaction->transaction_type != 'in') {
             return response()->json([
                 'message' => 'هذه العملية ليست إدخال للمخزون'
             ], 400);
         }
+
         $validated = $request->validate([
             'donor_id' => 'nullable|exists:donors,id',
+            'donor_full_name' => 'nullable|string|max:255',
+
             'transaction_date' => 'sometimes|date',
             'orientation' => 'nullable|string|in:inventory,project',
+
+            'project_id' => 'nullable|exists:projects,id',
+            'project_name' => 'nullable|string|max:255',
+
             'notes' => 'nullable|string',
         ]);
 
-        $inventoryTransaction->update($validated);
+        DB::beginTransaction();
 
-        return response()->json([
-            'message' => 'تم تحديث العملية بنجاح',
-            'data' => $inventoryTransaction
-        ], 200);
+        try {
+
+            $donorId = $inventoryTransaction->donor_id;
+            $projectId = $inventoryTransaction->project_id;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔹 معالجة المتبرع
+        |--------------------------------------------------------------------------
+        */
+
+            if (array_key_exists('donor_id', $validated)) {
+                $donorId = $validated['donor_id'];
+            }
+
+            if (!empty($validated['donor_full_name'])) {
+
+                $donor = Donor::create([
+                    'full_name' => $validated['donor_full_name']
+                ]);
+
+                $donorId = $donor->id;
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔹 معالجة المشروع
+        |--------------------------------------------------------------------------
+        */
+
+            if (($validated['orientation'] ?? $inventoryTransaction->orientation) === 'project') {
+
+                if (!empty($validated['project_id'])) {
+                    $projectId = $validated['project_id'];
+                }
+
+                if (!empty($validated['project_name'])) {
+
+                    $project = Project::create([
+                        'name' => $validated['project_name'],
+                        'status' => 'planned'
+                    ]);
+
+                    $projectId = $project->id;
+                }
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔹 تحديث العملية
+        |--------------------------------------------------------------------------
+        */
+
+            $inventoryTransaction->update([
+                'donor_id' => $donorId,
+                'project_id' => $projectId,
+                'transaction_date' => $validated['transaction_date'] ?? $inventoryTransaction->transaction_date,
+                'orientation' => $validated['orientation'] ?? $inventoryTransaction->orientation,
+                'notes' => $validated['notes'] ?? $inventoryTransaction->notes,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'تم تحديث العملية بنجاح',
+                'data' => $inventoryTransaction->load(['donor', 'project', 'assistanceItems'])
+            ], 200);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'فشل تحديث العملية',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function destroy(InventoryTransaction $inventoryTransaction)
